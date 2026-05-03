@@ -22,10 +22,10 @@ def register_user(db: Session, data: UserCreate):
     db.refresh(new_user)
 
     return new_user
-def loginUser(db: Session, data: UserLogin):
-    user=db.query(User).filter(User.email==data.email).first()
+def loginUser(db: Session, email:str,password:str):
+    user=db.query(User).filter(User.email==email).first()
     if(user):
-        if not verify_password(data.password,user.hashed_password):
+        if not verify_password(password,user.hashed_password):
             raise ValueError("Email ou password incorect ")
         token=create_access_token(data={"sub": str(user.id)})
         return token

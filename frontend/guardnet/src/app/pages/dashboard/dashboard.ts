@@ -9,7 +9,7 @@ import { CommonModule } from '@angular/common';
   templateUrl: './dashboard.html',
   styleUrls: ['./dashboard.css']
 })
-export class Dashboard implements OnInit, OnDestroy {
+export class DashboardComponent implements OnInit, OnDestroy {
 
   summary: any = { total: 0, online: 0, offline: 0 };
   devices: any[] = [];

@@ -1,77 +1,104 @@
 <div class="dashboard">
+
+  <!-- Header -->
   <div class="dashboard-header">
-    <div>
-      <h1>Tableau de bord</h1>
-      <p class="refresh-info">Données mises à jour toutes les 30 secondes.</p>
-    </div>
+    <h1>GuardNet Dashboard</h1>
+    <span class="refresh-info">Mise à jour toutes les 30s</span>
   </div>
 
+  <!-- Metric Cards -->
   <div class="cards-grid">
     <div class="card">
+      <div class="card-icon total">📡</div>
       <div class="card-info">
-        <span class="card-label">Total des appareils</span>
+        <span class="card-label">Total Appareils</span>
         <span class="card-value">{{ summary.total }}</span>
       </div>
     </div>
+
     <div class="card">
+      <div class="card-icon online">✅</div>
       <div class="card-info">
         <span class="card-label">En ligne</span>
         <span class="card-value green">{{ summary.online }}</span>
       </div>
     </div>
+
     <div class="card">
+      <div class="card-icon offline">❌</div>
       <div class="card-info">
-        <span class="card-label">Hors-ligne</span>
+        <span class="card-label">Hors ligne</span>
         <span class="card-value red">{{ summary.offline }}</span>
       </div>
     </div>
+
     <div class="card">
+      <div class="card-icon percent">📊</div>
       <div class="card-info">
-        <span class="card-label">Pourcentage en ligne</span>
+        <span class="card-label">Disponibilité</span>
         <span class="card-value">{{ getOnlinePercent() }}%</span>
       </div>
     </div>
   </div>
 
-  <section class="section">
-    <h2>Dispositifs</h2>
+  <!-- Tableau des appareils -->
+  <div class="section">
+    <h2>État des Appareils</h2>
     <table class="devices-table">
       <thead>
-        <tr>
-          <th>Nom</th>
-          <th>Type</th>
-          <th>Statut</th>
-          <th>IP</th>
-        </tr>
+      <tr>
+        <th>IP</th>
+        <th>Hostname</th>
+        <th>Type</th>
+        <th>Statut</th>
+        <th>Dernière vue</th>
+      </tr>
       </thead>
       <tbody>
-        <tr *ngFor="let device of devices">
-          <td>{{ device.name }}</td>
-          <td>{{ device.device_type }}</td>
-          <td>
-            <span class="badge" [ngClass]="device.status === 'online' ? 'online' : 'offline'">
+      <tr *ngFor="let device of devices">
+        <td>{{ device.ip }}</td>
+        <td>{{ device.hostname || '—' }}</td>
+        <td>{{ device.device_type }}</td>
+        <td>
+            <span [class]="device.status === 'online' ? 'badge online' : 'badge offline'">
               {{ device.status }}
             </span>
-          </td>
-          <td>{{ device.ip || '—' }}</td>
-        </tr>
-        <tr *ngIf="devices.length === 0">
-          <td colspan="4" class="empty">Aucun appareil trouvé.</td>
-        </tr>
+        </td>
+        <td>{{ device.last_seen | date:'dd/MM/yyyy HH:mm' }}</td>
+      </tr>
+      <tr *ngIf="devices.length === 0">
+        <td colspan="5" class="empty">Aucun appareil trouvé</td>
+      </tr>
       </tbody>
     </table>
-  </section>
+  </div>
 
-  <section class="section">
-    <h2>Historique du trafic</h2>
-    <div *ngIf="trafficHistory.length === 0" class="empty">
-      Aucune donnée de trafic disponible.
-    </div>
-    <div *ngIf="trafficHistory.length > 0">
-      <div *ngFor="let item of trafficHistory" class="traffic-line">
-        <span>{{ item.time }}</span>
-        <span>{{ item.value }}</span>
-      </div>
-    </div>
-  </section>
+  <!-- Trafic réseau -->
+  <div class="section">
+    <h2>Historique du Trafic</h2>
+    <table class="devices-table">
+      <thead>
+      <tr>
+        <th>Timestamp</th>
+        <th>Total Paquets</th>
+        <th>TCP %</th>
+        <th>UDP %</th>
+        <th>Bytes Total</th>
+      </tr>
+      </thead>
+      <tbody>
+      <tr *ngFor="let traffic of trafficHistory">
+        <td>{{ traffic.timestamp | date:'dd/MM/yyyy HH:mm' }}</td>
+        <td>{{ traffic.total_packets }}</td>
+        <td>{{ traffic.tcp_pct }}%</td>
+        <td>{{ traffic.udp_pct }}%</td>
+        <td>{{ traffic.bytes_total }}</td>
+      </tr>
+      <tr *ngIf="trafficHistory.length === 0">
+        <td colspan="5" class="empty">Aucun trafic enregistré</td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+
 </div>
