@@ -1,1 +1,369 @@
-<p>scan works!</p>
+<div class="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
+  <div class="mx-auto max-w-7xl space-y-7">
+    <header class="grid gap-5 xl:grid-cols-[1fr_auto] xl:items-center">
+      <div class="flex items-start gap-4">
+        <div class="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-md shadow-blue-200">
+          <span class="absolute h-14 w-14 animate-ping rounded-2xl bg-blue-400 opacity-20"></span>
+          <svg class="relative h-7 w-7 animate-pulse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <circle cx="12" cy="12" r="8"></circle>
+            <path d="M12 2v2"></path>
+            <path d="M12 20v2"></path>
+            <path d="M2 12h2"></path>
+            <path d="M20 12h2"></path>
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-3xl font-bold tracking-tight text-gray-950">Scan Réseau</h1>
+          <p class="mt-1 text-base text-gray-500">Découvrez et analysez les équipements de votre réseau local</p>
+        </div>
+      </div>
+
+      <div class="grid gap-3 sm:grid-cols-3 xl:min-w-[560px]">
+        <div class="rounded-xl bg-white p-4 shadow-md ring-1 ring-gray-100">
+          <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Scans effectués</p>
+          <p class="mt-2 text-2xl font-bold text-gray-950">{{ totalScans }}</p>
+        </div>
+        <div class="rounded-xl bg-white p-4 shadow-md ring-1 ring-gray-100">
+          <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Dernier scan</p>
+          <p class="mt-2 truncate text-sm font-semibold text-gray-950">{{ lastScan ? getScanDateLabel(lastScan.started_at) : '-' }}</p>
+        </div>
+        <div class="rounded-xl bg-white p-4 shadow-md ring-1 ring-gray-100">
+          <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Machines connues</p>
+          <p class="mt-2 text-2xl font-bold text-blue-600">{{ monitoringSummary.total || 0 }}</p>
+        </div>
+      </div>
+    </header>
+
+    <section #scanFormCard class="rounded-xl bg-white p-5 shadow-md ring-1 ring-gray-100 transition-all duration-300 sm:p-6">
+      <div class="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 class="text-xl font-semibold text-gray-950">Nouveau scan</h2>
+          <p class="text-sm text-gray-500">Configurez une analyse réseau adaptée à votre besoin.</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <button
+            *ngIf="!isScanning"
+            type="button"
+            (click)="showDemoScanPreview()"
+            class="inline-flex w-fit items-center rounded-full border border-gray-200 px-3 py-1 text-sm font-semibold text-gray-600 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+          >
+            Voir un aperçu
+          </button>
+          <span *ngIf="isScanning" class="inline-flex w-fit items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-sm font-semibold text-gray-700">
+            <span class="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600"></span>
+            Scan en cours
+          </span>
+        </div>
+      </div>
+
+      <form class="grid gap-5 lg:grid-cols-[1fr_1.2fr_auto] lg:items-start" (ngSubmit)="startScan()">
+        <label class="block">
+          <span class="text-sm font-semibold text-gray-800">Plage IP</span>
+          <input
+            name="ipRange"
+            [(ngModel)]="ipRange"
+            [disabled]="isScanning"
+            type="text"
+            placeholder="192.168.1.0/24"
+            class="mt-2 h-12 w-full rounded-xl border px-4 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:bg-gray-100 disabled:text-gray-500"
+            [class.border-red-300]="showIpError"
+            [class.border-gray-200]="!showIpError"
+          />
+          <p class="mt-2 text-xs text-gray-500">Formats acceptés : 192.168.1.0/24 ou 192.168.1.1-50</p>
+          <p *ngIf="showIpError" class="mt-2 text-sm font-semibold text-red-600">Veuillez entrer une plage IP valide</p>
+        </label>
+
+        <div>
+          <span class="text-sm font-semibold text-gray-800">Type de scan</span>
+          <div class="mt-2 grid gap-3 sm:grid-cols-2">
+            <label
+              class="cursor-pointer rounded-xl border p-4 transition"
+              [class.border-blue-500]="scanType === 'rapide'"
+              [class.bg-blue-50]="scanType === 'rapide'"
+              [class.ring-4]="scanType === 'rapide'"
+              [class.ring-blue-100]="scanType === 'rapide'"
+              [class.border-gray-200]="scanType !== 'rapide'"
+            >
+              <input class="sr-only" type="radio" name="scanType" value="rapide" [(ngModel)]="scanType" [disabled]="isScanning" />
+              <span class="inline-flex rounded-full bg-blue-100 px-3 py-1 text-sm font-bold text-blue-700">Rapide</span>
+              <p class="mt-3 text-sm font-medium text-gray-900">30 secondes environ</p>
+              <p class="mt-1 text-xs text-gray-500">Détecte les machines actives uniquement</p>
+            </label>
+
+            <label
+              class="cursor-pointer rounded-xl border p-4 transition"
+              [class.border-blue-500]="scanType === 'complet'"
+              [class.bg-blue-50]="scanType === 'complet'"
+              [class.ring-4]="scanType === 'complet'"
+              [class.ring-blue-100]="scanType === 'complet'"
+              [class.border-gray-200]="scanType !== 'complet'"
+            >
+              <input class="sr-only" type="radio" name="scanType" value="complet" [(ngModel)]="scanType" [disabled]="isScanning" />
+              <span class="inline-flex rounded-full bg-indigo-100 px-3 py-1 text-sm font-bold text-indigo-700">Complet</span>
+              <p class="mt-3 text-sm font-medium text-gray-900">2-3 minutes</p>
+              <p class="mt-1 text-xs text-gray-500">Détecte OS, ports ouverts et services</p>
+            </label>
+          </div>
+        </div>
+
+        <button
+          type="submit"
+          [disabled]="isScanning"
+          class="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 text-sm font-bold text-white shadow-md shadow-blue-100 transition hover:bg-blue-700 disabled:bg-gray-300 disabled:shadow-none lg:mt-7"
+        >
+          <span *ngIf="isScanning" class="h-5 w-5 animate-spin rounded-full border-2 border-white/40 border-t-white"></span>
+          <svg *ngIf="!isScanning" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="m21 21-4.3-4.3"></path>
+          </svg>
+          {{ isScanning ? 'Scan en cours...' : 'Lancer le scan' }}
+        </button>
+      </form>
+
+      <div *ngIf="errorMessage" class="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+        {{ errorMessage }}
+      </div>
+    </section>
+
+    <section *ngIf="isLoadingResults" class="rounded-xl bg-white p-8 text-center shadow-md ring-1 ring-gray-100">
+      <div class="mx-auto flex w-fit items-center gap-3 rounded-full bg-blue-50 px-5 py-3 text-sm font-bold text-blue-700">
+        <span class="h-5 w-5 animate-spin rounded-full border-2 border-blue-200 border-t-blue-700"></span>
+        Analyse en cours...
+      </div>
+    </section>
+
+    <section *ngIf="canShowResults" class="overflow-hidden rounded-xl bg-white shadow-md ring-1 ring-gray-100 transition-all duration-300">
+      <div class="flex flex-col gap-4 border-b border-gray-100 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+        <div>
+          <h2 class="text-xl font-semibold text-gray-950">Résultats</h2>
+          <div class="mt-2 flex flex-wrap gap-2">
+            <span *ngIf="isDemoData" class="rounded-full bg-blue-100 px-3 py-1 text-sm font-bold text-blue-700 ring-1 ring-blue-200">
+              Aperçu
+            </span>
+            <span class="rounded-full bg-green-100 px-3 py-1 text-sm font-bold text-green-700 ring-1 ring-green-200">
+              {{ getMachineLabel(activeScan?.devices_found || devices.length) }} détectées
+            </span>
+            <span class="rounded-full bg-gray-100 px-3 py-1 text-sm font-bold text-gray-700 ring-1 ring-gray-200">
+              Terminé en {{ resultDurationLabel }}
+            </span>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          (click)="exportCsv()"
+          class="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-gray-900 px-4 text-sm font-bold text-white transition hover:bg-gray-800"
+        >
+          <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <path d="M7 10l5 5 5-5"></path>
+            <path d="M12 15V3"></path>
+          </svg>
+          Exporter CSV
+        </button>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+          <thead>
+            <tr class="bg-gray-100 text-left text-xs font-bold uppercase tracking-wide text-gray-500">
+              <th class="px-5 py-4">IP</th>
+              <th class="px-5 py-4">Hostname</th>
+              <th class="px-5 py-4">OS</th>
+              <th class="px-5 py-4">Type</th>
+              <th class="px-5 py-4">Ports ouverts</th>
+              <th class="px-5 py-4">Statut</th>
+              <th class="px-5 py-4 text-right">Détails</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              *ngFor="let device of devices; let index = index"
+              class="border-b border-gray-100 transition hover:bg-blue-50/50"
+              [class.bg-gray-50]="index % 2 === 1"
+              [class.bg-white]="index % 2 === 0"
+            >
+              <td class="whitespace-nowrap px-5 py-4 font-bold text-gray-950">{{ getDeviceIp(device) }}</td>
+              <td class="whitespace-nowrap px-5 py-4 text-gray-700">{{ device.hostname || '-' }}</td>
+              <td class="min-w-40 px-5 py-4 text-gray-700">{{ device.os_name || '-' }}</td>
+              <td class="px-5 py-4">
+                <span class="inline-flex rounded-full px-3 py-1 text-xs font-bold ring-1" [ngClass]="getDeviceTypeClass(device.device_type)">
+                  {{ getDeviceTypeLabel(device.device_type) }}
+                </span>
+              </td>
+              <td class="min-w-60 px-5 py-4">
+                <div *ngIf="device.ports?.length; else noPorts" class="flex flex-wrap gap-2">
+                  <span *ngFor="let port of device.ports" class="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700 ring-1 ring-gray-200">
+                    {{ getPortLabel(port) }}
+                  </span>
+                </div>
+                <ng-template #noPorts>
+                  <span *ngIf="activeScan?.scan_type === 'rapide'; else completeNoPorts" class="italic text-gray-400">Scan complet requis</span>
+                  <ng-template #completeNoPorts>
+                    <span class="text-gray-400">-</span>
+                  </ng-template>
+                </ng-template>
+              </td>
+              <td class="px-5 py-4">
+                <div class="flex flex-wrap gap-2">
+                  <span *ngIf="device.is_new" class="rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-700 ring-1 ring-red-200">Nouveau</span>
+                  <span *ngIf="hasNewPort(device)" class="rounded-full bg-orange-100 px-3 py-1 text-xs font-bold text-orange-700 ring-1 ring-orange-200">Port modifié</span>
+                  <span *ngIf="!device.is_new && !hasNewPort(device)" class="text-gray-400">-</span>
+                </div>
+              </td>
+              <td class="px-5 py-4 text-right">
+                <button
+                  type="button"
+                  (click)="openDeviceDetails(device)"
+                  class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 text-gray-600 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+                  title="Voir les détails"
+                >
+                  <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                  </svg>
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div *ngIf="selectedDevice" class="border-t border-gray-100 bg-gray-50 p-5 sm:p-6">
+        <div class="flex flex-col gap-4 rounded-xl bg-white p-5 ring-1 ring-gray-100 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h3 class="text-lg font-bold text-gray-950">Détails machine</h3>
+            <p class="mt-1 text-sm text-gray-500">Résumé technique de l équipement sélectionné.</p>
+            <div class="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+              <div><span class="font-semibold text-gray-500">IP</span><p class="font-bold text-gray-950">{{ getDeviceIp(selectedDevice) }}</p></div>
+              <div><span class="font-semibold text-gray-500">Hostname</span><p class="font-bold text-gray-950">{{ selectedDevice.hostname || '-' }}</p></div>
+              <div><span class="font-semibold text-gray-500">OS</span><p class="font-bold text-gray-950">{{ selectedDevice.os_name || '-' }}</p></div>
+              <div><span class="font-semibold text-gray-500">Type</span><p class="font-bold text-gray-950">{{ getDeviceTypeLabel(selectedDevice.device_type) }}</p></div>
+            </div>
+          </div>
+          <button type="button" (click)="closeDeviceDetails()" class="rounded-full px-3 py-1 text-sm font-bold text-gray-500 transition hover:bg-gray-100 hover:text-gray-900">Fermer</button>
+        </div>
+      </div>
+    </section>
+
+    <section *ngIf="scanAlerts.length > 0" class="rounded-xl border p-5 shadow-md transition-all duration-300 sm:p-6" [ngClass]="alertPanelClass">
+      <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 class="text-lg font-bold text-gray-950">Alertes générées par ce scan</h2>
+          <p class="mt-1 text-sm text-gray-700">{{ scanAlerts.length }} nouvelle{{ scanAlerts.length > 1 ? 's' : '' }} alerte{{ scanAlerts.length > 1 ? 's' : '' }} générée{{ scanAlerts.length > 1 ? 's' : '' }}</p>
+        </div>
+        <button
+          type="button"
+          (click)="openAlertsPage()"
+          class="inline-flex h-10 items-center justify-center rounded-xl bg-gray-900 px-4 text-sm font-bold text-white transition hover:bg-gray-800"
+        >
+          Voir toutes les alertes
+        </button>
+      </div>
+
+      <div class="mt-4 space-y-3">
+        <div *ngFor="let alert of scanAlerts" class="flex gap-3 rounded-xl bg-white/70 p-4 ring-1 ring-white">
+          <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full" [ngClass]="getAlertIconClass(alert.severity)">
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path>
+              <path d="M12 9v4"></path>
+              <path d="M12 17h.01"></path>
+            </svg>
+          </div>
+          <p class="text-sm font-medium text-gray-800">{{ alert.message }}</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="rounded-xl bg-white shadow-md ring-1 ring-gray-100">
+      <div class="flex flex-col gap-2 border-b border-gray-100 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+        <div>
+          <h2 class="text-xl font-semibold text-gray-950">Historique des scans</h2>
+          <p class="text-sm text-gray-500">Consultez les analyses précédentes et relancez une plage en un clic.</p>
+        </div>
+        <div *ngIf="isLoadingHistory" class="flex items-center gap-2 text-sm font-bold text-blue-600">
+          <span class="h-4 w-4 animate-spin rounded-full border-2 border-blue-200 border-t-blue-600"></span>
+          Chargement
+        </div>
+      </div>
+
+      <div *ngIf="!isLoadingHistory && history.length === 0" class="p-10 text-center">
+        <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+          <svg class="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="8"></circle>
+            <path d="M12 8v4l3 3"></path>
+          </svg>
+        </div>
+        <p class="mt-4 text-sm font-semibold text-gray-700">Aucun scan effectué. Lancez votre premier scan !</p>
+      </div>
+
+      <div *ngIf="history.length > 0" class="hidden border-b border-gray-100 bg-gray-100 px-5 py-3 text-xs font-bold uppercase tracking-wide text-gray-500 sm:grid sm:grid-cols-[1.4fr_1fr_.7fr_.8fr_.7fr_auto] sm:px-6">
+        <div>Date</div>
+        <div>Plage IP</div>
+        <div>Type</div>
+        <div>Machines</div>
+        <div>Durée</div>
+        <div class="text-right">Actions</div>
+      </div>
+
+      <div *ngIf="history.length > 0" class="divide-y divide-gray-100">
+        <div
+          *ngFor="let item of history"
+          class="grid cursor-pointer gap-4 p-5 transition hover:bg-gray-50 sm:grid-cols-[1.4fr_1fr_.7fr_.8fr_.7fr_auto] sm:items-center sm:p-6"
+          [class.bg-blue-50]="activeScanId === item.id"
+          (click)="viewScan(item.id)"
+        >
+          <div class="flex items-center gap-3">
+            <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100 text-gray-600">
+              <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="4" width="18" height="18" rx="2"></rect>
+                <path d="M16 2v4"></path>
+                <path d="M8 2v4"></path>
+                <path d="M3 10h18"></path>
+              </svg>
+            </div>
+            <div>
+              <p class="font-bold text-gray-900">{{ getScanDateLabel(item.started_at) }}</p>
+              <p class="text-xs text-gray-500">Scan #{{ item.id }}</p>
+            </div>
+          </div>
+          <div class="text-sm font-semibold text-gray-800">{{ item.ip_range }}</div>
+          <div>
+            <span class="rounded-full px-3 py-1 text-xs font-bold ring-1" [ngClass]="getScanTypeClass(item.scan_type)">
+              {{ getScanTypeLabel(item.scan_type) }}
+            </span>
+          </div>
+          <div class="text-sm text-gray-600">{{ getMachineLabel(item.devices_found) }}</div>
+          <div class="text-sm text-gray-500">{{ getDurationLabel(item) }}</div>
+          <div class="flex flex-wrap gap-2 sm:justify-end">
+            <button
+              type="button"
+              (click)="stopHistoryAction($event); viewScan(item.id)"
+              class="inline-flex items-center gap-2 rounded-full border border-gray-200 px-3 py-1 text-sm font-bold text-gray-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+            >
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+              Voir
+            </button>
+            <button
+              type="button"
+              (click)="stopHistoryAction($event); prefillScan(item)"
+              class="inline-flex items-center gap-2 rounded-full border border-gray-200 px-3 py-1 text-sm font-bold text-gray-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+            >
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 12a9 9 0 0 1-15.5 6.2"></path>
+                <path d="M3 12A9 9 0 0 1 18.5 5.8"></path>
+                <path d="M18 2v4h4"></path>
+                <path d="M6 22v-4H2"></path>
+              </svg>
+              Relancer
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
