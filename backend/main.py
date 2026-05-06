@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.background import BackgroundScheduler
 from database import engine, SessionLocal
 from models import models
-from routers import scan, auth, users, settings, anomaly, alerts, monitoring
+from routers import scan, users, settings, anomaly, alerts, monitoring, auth  # ✅ tout ici
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -20,7 +20,6 @@ def _run_scheduled_anomaly() -> None:
     finally:
         db.close()
 
-
 @app.on_event("startup")
 def start_scheduler() -> None:
     scheduler.add_job(
@@ -31,7 +30,6 @@ def start_scheduler() -> None:
         replace_existing=True,
     )
     scheduler.start()
-
 
 @app.on_event("shutdown")
 def stop_scheduler() -> None:
