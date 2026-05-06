@@ -1,0 +1,133 @@
+<div class="network-map-container">
+  <div class="map-header">
+    <h2>Carte Réseau</h2>
+    <span class="device-count">{{ totalDevices }} appareils</span>
+  </div>
+
+  <div *ngIf="loading" class="loading">
+    <p>Chargement de la carte réseau...</p>
+  </div>
+
+  <div *ngIf="error" class="error">
+    {{ error }}
+  </div>
+
+  <div class="svg-container">
+    <svg width="800" height="600" viewBox="0 0 800 600" class="network-svg">
+      <!-- Grille de fond -->
+      <defs>
+        <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+          <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#e5e7eb" stroke-width="0.5" />
+        </pattern>
+      </defs>
+      <rect width="800" height="600" fill="url(#grid)" />
+
+      <!-- Connexions (lignes entre nœuds) -->
+      <line
+        *ngFor="let node of nodes; let i = index"
+        [attr.x1]="400"
+        [attr.y1]="300"
+        [attr.x2]="node.x"
+        [attr.y2]="node.y"
+        class="connection-line"
+        [class.highlight]="selectedNode?.id === node.id"
+      />
+
+      <!-- Nœuds -->
+      <g *ngFor="let node of nodes">
+        <circle
+          [attr.cx]="node.x"
+          [attr.cy]="node.y"
+          r="30"
+          [attr.fill]="getNodeColor(node.status)"
+          [attr.class.selected]="selectedNode?.id === node.id"
+          class="node"
+          (click)="selectNode(node)"
+        />
+
+        <!-- Icône device type -->
+        <text [attr.x]="node.x" [attr.y]="node.y + 5" text-anchor="middle" class="node-icon">
+          {{ node.icon }}
+        </text>
+
+        <!-- Alert badge -->
+        <circle
+          *ngIf="node.alert_count > 0"
+          [attr.cx]="node.x + 20"
+          [attr.cy]="node.y - 20"
+          r="15"
+          class="alert-badge"
+          fill="#ef4444"
+        />
+        <text
+          *ngIf="node.alert_count > 0"
+          [attr.x]="node.x + 20"
+          [attr.y]="node.y - 15"
+          text-anchor="middle"
+          class="alert-count"
+        >
+          {{ node.alert_count }}
+        </text>
+
+        <!-- Label -->
+        <text [attr.x]="node.x" [attr.y]="node.y + 50" text-anchor="middle" class="node-label">
+          {{ node.hostname }}
+        </text>
+      </g>
+
+      <!-- Centre -->
+      <circle cx="400" cy="300" r="15" fill="#3b82f6" class="center-node" />
+      <text x="400" y="305" text-anchor="middle" class="center-label">Réseau</text>
+    </svg>
+  </div>
+
+  <!-- Panel latéral -->
+  <div class="side-panel" [class.open]="selectedNode">
+    <button class="close-btn" (click)="closePanel()" *ngIf="selectedNode">✕</button>
+
+    <div *ngIf="selectedNode" class="panel-content">
+      <div class="panel-header">
+        <span class="icon">{{ selectedNode.icon }}</span>
+        <div>
+          <h3>{{ selectedNode.hostname }}</h3>
+          <p class="ip">{{ selectedNode.ip }}</p>
+        </div>
+      </div>
+
+      <div class="panel-details">
+        <div class="detail-item">
+          <label>Type d'appareil</label>
+          <span class="value">{{ selectedNode.device_type }}</span>
+        </div>
+
+        <div class="detail-item">
+          <label>Statut</label>
+          <span class="value" [class.status-up]="selectedNode.status === 'up' || selectedNode.status === 'online'">
+            {{ getStatusLabel(selectedNode.status) }}
+          </span>
+        </div>
+
+        <div class="detail-item">
+          <label>Alertes actives</label>
+          <span class="value alert">{{ selectedNode.alert_count }}</span>
+        </div>
+
+        <div class="detail-item">
+          <label>Première détection</label>
+          <span class="value">{{ formatDate(selectedNode.first_seen) }}</span>
+        </div>
+
+        <div class="detail-item">
+          <label>Dernière mise à jour</label>
+          <span class="value">{{ formatDate(selectedNode.last_seen) }}</span>
+        </div>
+      </div>
+
+      <!-- Boutons d'action -->
+      <div class="panel-actions">
+        <button class="btn btn-primary">Voir les alertes</button>
+        <button class="btn btn-secondary">Diagnostiquer</button>
+      </div>
+    </div>
+  </div>
+</div>

@@ -5,7 +5,16 @@ from models.models import Device, MetricHistory, Alert
 from datetime import datetime
 from apscheduler.schedulers.background import BackgroundScheduler
 from database import SessionLocal
-from pysnmp.hlapi import *
+from pysnmp.hlapi import (
+    SnmpEngine,
+    CommunityData,
+    UdpTransportTarget,
+    ContextData,
+    ObjectType,
+    ObjectIdentity,
+    getCmd,
+)
+
 def ping_device(ip:str) ->bool:
     result=subprocess.run(
         ["ping","-n","1","-w","1000",ip],stdout=subprocess.DEVNULL,

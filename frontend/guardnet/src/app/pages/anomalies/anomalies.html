@@ -1,1 +1,148 @@
-<p>anomalies works!</p>
+<div class="anomalies-page">
+  <!-- En-tête -->
+  <div class="page-header">
+    <div class="header-content">
+      <h1>Détection d'Anomalies</h1>
+      <p class="subtitle">Analyse comportementale du réseau et détection automatique</p>
+    </div>
+
+    <!-- Statistiques -->
+    <div class="header-stats">
+      <div class="stat-card">
+        <span class="stat-label">Anomalies détectées</span>
+        <span class="stat-value">{{ getAnomalyCount() }}</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Score moyen</span>
+        <span class="stat-value" [style.color]="getScoreColor(getAverageScore())">
+          {{ getAverageScore() }}%
+        </span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Historique</span>
+        <span class="stat-value">{{ anomalyHistory.length }} points</span>
+      </div>
+    </div>
+
+    <!-- Bouton Analyser -->
+    <button class="btn-analyze" (click)="analyzeNow()" [disabled]="analyzing">
+      <span>{{ analyzing ? 'Analyse en cours...' : '🔍 Analyser maintenant' }}</span>
+    </button>
+  </div>
+
+  <!-- Message de chargement/erreur -->
+  <div *ngIf="loading" class="loading">
+    <p>Chargement de l'historique...</p>
+  </div>
+
+  <div *ngIf="error" class="error">
+    {{ error }}
+  </div>
+
+  <div *ngIf="!loading && !error" class="content">
+    <!-- Résultat dernière analyse -->
+    <div *ngIf="lastAnalysis" class="analysis-result">
+      <div class="result-header">
+        <span class="result-icon">{{ lastAnalysis.is_anomaly ? '⚠️' : '✅' }}</span>
+        <div>
+          <h3>{{ lastAnalysis.is_anomaly ? 'Anomalie détectée' : 'Aucune anomalie' }}</h3>
+          <p class="result-subtitle">Score: {{ (lastAnalysis.score * 100).toFixed(1) }}%</p>
+        </div>
+      </div>
+      <div class="result-details">
+        <p>
+          {{ lastAnalysis.is_anomaly 
+            ? 'Une anomalie a été détectée. Vérifier les alertes liées pour plus d\'informations.'
+            : 'Le comportement du réseau est normal. Aucune anomalie détectée.' }}
+        </p>
+        <p class="confidence">Confiance: {{ (lastAnalysis.confidence * 100).toFixed(1) }}%</p>
+      </div>
+    </div>
+
+    <!-- Graphique des scores -->
+    <div class="chart-section">
+      <h2>Scores historiques</h2>
+      <div class="chart-container">
+        <canvas id="anomaly-chart"></canvas>
+      </div>
+      <div class="chart-legend">
+        <div class="legend-item">
+          <div class="legend-color" style="background: #3b82f6;"></div>
+          <span>Score normal</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #ef4444;"></div>
+          <span>Anomalie détectée</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #f59e0b; opacity: 0.5;"></div>
+          <span>Seuil d'anomalie</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Anomalies récentes -->
+    <div *ngIf="getRecentAnomalies().length > 0" class="recent-anomalies">
+      <h2>Anomalies récentes</h2>
+      <div class="anomaly-list">
+        <div *ngFor="let anomaly of getRecentAnomalies()" class="anomaly-item">
+          <div class="anomaly-header">
+            <span class="anomaly-time">{{ formatDate(anomaly.timestamp) }}</span>
+            <span class="anomaly-score" [style.background]="getScoreColor((anomaly.score * 100))">
+              {{ (anomaly.score * 100).toFixed(1) }}%
+            </span>
+          </div>
+          <div class="anomaly-features">
+            <div class="feature" *ngFor="let key of anomaly.features | keyvalue">
+              <span class="feature-name">{{ key.key }}</span>
+              <span class="feature-value">{{ key.value | number: '1.0-2' }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tableau complet -->
+    <div *ngIf="anomalyHistory.length > 0" class="full-history">
+      <h2>Historique complet</h2>
+      <table class="history-table">
+        <thead>
+          <tr>
+            <th>Temps</th>
+            <th>Score</th>
+            <th>Statut</th>
+            <th>CPU %</th>
+            <th>RAM %</th>
+            <th>Latence</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let log of anomalyHistory | slice: 0:20" [class.anomaly]="log.is_anomaly">
+            <td>{{ formatDate(log.timestamp) }}</td>
+            <td>
+              <span class="score-bar" [style.width]="(log.score * 100) + '%'">
+                {{ (log.score * 100).toFixed(1) }}%
+              </span>
+            </td>
+            <td>
+              <span class="status-badge" [class.is-anomaly]="log.is_anomaly">
+                {{ log.is_anomaly ? 'Anomalie' : 'Normal' }}
+              </span>
+            </td>
+            <td>{{ log.features?.cpu_percent?.toFixed(1) || 'N/A' }}%</td>
+            <td>{{ log.features?.ram_percent?.toFixed(1) || 'N/A' }}%</td>
+            <td>{{ log.features?.latency_ms?.toFixed(0) || 'N/A' }}ms</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Message vide -->
+    <div *ngIf="anomalyHistory.length === 0" class="empty-state">
+      <span class="empty-icon">📊</span>
+      <p>Aucune donnée d'anomalie disponible</p>
+      <p class="empty-help">Cliquez sur "Analyser maintenant" pour commencer</p>
+    </div>
+  </div>
+</div>
+
