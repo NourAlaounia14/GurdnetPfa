@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.background import BackgroundScheduler
 from database import engine, SessionLocal
 from models import models
-from routers import scan, users, settings, anomaly, alerts, monitoring, auth  # ✅ tout ici
+from routers import scan, users, settings, anomaly, alerts, monitoring, auth ,traffic # ✅ tout ici
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -51,6 +51,7 @@ app.include_router(settings.router)
 app.include_router(anomaly.router)
 app.include_router(alerts.router)
 app.include_router(monitoring.router)
+app.include_router(traffic.router)
 
 @app.get("/")
 def root():
