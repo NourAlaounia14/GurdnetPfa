@@ -1,325 +1,472 @@
-# GuardNet - Plateforme d'Administration et de Supervision Réseau
+# GuardNet : Plateforme de Supervision et d'Analyse d'Anomalies Réseau
 
-GuardNet est une plateforme complète d'administration et de supervision d'un réseau local. Elle permet aux administrateurs de surveiller les machines du réseau, lancer des scans, consulter les alertes, visualiser la carte réseau, analyser les anomalies par IA et générer des rapports.
+## Résumé Exécutif
 
-## 📋 Table des matières
+GuardNet est une plateforme de supervision réseau et de détection d'anomalies intégrant des techniques d'apprentissage automatique. Ce système permet la supervision en temps réel des équipements d'un réseau local, l'analyse des données de monitoring via des modèles d'apprentissage statistique et la génération automatisée d'alertes selon des critères comportementaux. Cette application a été développée dans le cadre d'un projet académique.
 
-- [Prérequis](#prérequis)
-- [Installation](#installation)
-- [Configuration](#configuration)
-- [Compilation et Démarrage](#compilation-et-démarrage)
-- [Structure du Projet](#structure-du-projet)
-- [Fonctionnalités Principales](#fonctionnalités-principales)
+---
 
-## 🔧 Prérequis
+## Table des Matières
 
-Avant de commencer, assurez-vous d'avoir les éléments suivants installés sur votre machine :
+1. [Architecture Générale](#architecture-générale)
+2. [Prérequis Système](#prérequis-système)
+3. [Installation et Configuration](#installation-et-configuration)
+4. [Compilation et Exécution](#compilation-et-exécution)
+5. [Structure du Code Source](#structure-du-code-source)
+6. [Descriptions Techniques des Modules](#descriptions-techniques-des-modules)
+7. [Guide de Dépannage](#guide-de-dépannage)
 
-- **Python 3.10+** - [Télécharger](https://www.python.org/downloads/)
-- **Node.js 20+** - [Télécharger](https://nodejs.org/)
-- **npm 10.9.2+** - Livré avec Node.js
-- **PostgreSQL 14+** - [Télécharger](https://www.postgresql.org/download/) (ou utiliser Docker)
-- **Git** - [Télécharger](https://git-scm.com/downloads)
+---
 
-### Vérifier les installations
+## Architecture Générale
 
-```bash
-python --version
-node --version
-npm --version
-psql --version
-```
+GuardNet suit une architecture trois tiers :
 
-## 📦 Installation
+- **Couche Présentation** : Frontend Angular 21 avec interface responsive (Tailwind CSS)
+- **Couche Métier** : API REST FastAPI (Python 3.10+) avec modèles de données relationnels
+- **Couche Persistance** : Base de données PostgreSQL 14+
 
-### 1. Cloner le Répertoire
+### Stack Technologique
+
+| Composant | Technologie | Version |
+|-----------|-------------|---------|
+| Frontend | Angular | 21.2.0 |
+| Backend | FastAPI | 0.135.3 |
+| Runtime Backend | Python | 3.10+ |
+| Runtime Frontend | Node.js | 20+ |
+| Base de Données | PostgreSQL | 14+ |
+| ORM | SQLAlchemy | 2.0.49 |
+| Validation | Pydantic | 2.12.5 |
+
+---
+
+## Prérequis Système
+
+### Logiciels Obligatoires
+
+1. **Python 3.10 ou ultérieur**
+   - Télécharger depuis : https://www.python.org/downloads/
+   - Vérifier : `python --version`
+
+2. **Node.js 20.x et npm 10.9.2+**
+   - Télécharger depuis : https://nodejs.org/
+   - Vérifier : `node --version` et `npm --version`
+
+3. **PostgreSQL 14 ou ultérieur**
+   - Télécharger depuis : https://www.postgresql.org/download/
+   - Vérifier : `psql --version`
+   - Alternative : Utiliser Docker (voir section Docker)
+
+4. **Git 2.30+**
+   - Télécharger depuis : https://git-scm.com/downloads/
+   - Vérifier : `git --version`
+
+### Dépendances Optionnelles
+
+- **Docker** : Pour conteneuriser PostgreSQL
+- **Postman** : Pour tester les endpoints API
+
+---
+
+## Installation et Configuration
+
+### Étape 1 : Cloner le Dépôt
 
 ```bash
 git clone https://github.com/NourAlaounia14/GurdnetPfa.git
 cd GurdnetPfa
 ```
 
-### 2. Configuration de la Base de Données PostgreSQL
+### Étape 2 : Configurer la Base de Données
 
-#### Option A : Installation Locale
+#### Option A : Installation PostgreSQL Locale
+
 ```bash
-# Créer une base de données PostgreSQL
+# Créer la base de données
 createdb guardnet_db
 
-# Se connecter à la base (optionnel pour vérifier)
-psql -d guardnet_db
+# Vérifier la connexion
+psql -d guardnet_db -c "SELECT version();"
 ```
 
 #### Option B : Utiliser Docker
+
 ```bash
-docker run --name guardnet-postgres -e POSTGRES_DB=guardnet_db -e POSTGRES_PASSWORD=your_password -p 5432:5432 -d postgres:14
+# Créer et démarrer un conteneur PostgreSQL
+docker run --name guardnet-postgres \
+  -e POSTGRES_DB=guardnet_db \
+  -e POSTGRES_PASSWORD=postgres \
+  -p 5432:5432 \
+  -d postgres:14
+
+# Vérifier
+docker ps
 ```
 
-### 3. Installation du Backend
+### Étape 3 : Installer et Configurer le Backend
 
 ```bash
 cd backend
 
-# Créer un environnement virtuel Python
+# Créer l'environnement virtuel Python
 python -m venv venv
 
 # Activer l'environnement virtuel
-# Windows:
+# Windows :
 venv\Scripts\activate
-# macOS/Linux:
+# Linux/macOS :
 source venv/bin/activate
 
 # Installer les dépendances
 pip install -r requirements.txt
 ```
 
-### 4. Installation du Frontend
+### Étape 4 : Configurer les Variables d'Environnement Backend
+
+Créer un fichier `.env` à la racine du dossier `backend/` :
+
+```env
+# Base de Données
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/guardnet_db
+
+# Sécurité - JWT
+SECRET_KEY=your_secret_key_change_in_production
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+
+# Serveur
+API_HOST=0.0.0.0
+API_PORT=8000
+DEBUG=False
+
+# Configuration Email (optionnel)
+SMTP_SERVER=smtp.gmail.com
+SMTP_PORT=587
+SENDER_EMAIL=your_email@example.com
+SENDER_PASSWORD=your_app_password
+```
+
+### Étape 5 : Initialiser la Base de Données
+
+```bash
+# À partir du dossier backend/ avec l'environnement virtuel activé
+python -m alembic upgrade head
+```
+
+### Étape 6 : Installer et Configurer le Frontend
 
 ```bash
 cd frontend/guardnet
 
 # Installer les dépendances npm
 npm install
+
+# Vérifier l'installation
+npm list
 ```
 
-## ⚙️ Configuration
+---
 
-### Variables d'Environnement Backend
+## Compilation et Exécution
 
-Créer un fichier `.env` à la racine du dossier `backend/` :
+### Exécution en Mode Développement
 
-```env
-# Base de Données
-DATABASE_URL=postgresql://user:password@localhost:5432/guardnet_db
-
-# Sécurité
-SECRET_KEY=your_secret_key_here
-ALGORITHM=HS256
-
-# API
-API_PORT=8000
-API_HOST=0.0.0.0
-
-# Authentification
-ACCESS_TOKEN_EXPIRE_MINUTES=30
-
-# Email (optionnel)
-SMTP_SERVER=smtp.gmail.com
-SMTP_PORT=587
-SENDER_EMAIL=your_email@gmail.com
-SENDER_PASSWORD=your_app_password
-```
-
-### Variables d'Environnement Frontend
-
-Créer un fichier `environment.ts` dans `frontend/guardnet/src/` si nécessaire :
-
-```typescript
-export const environment = {
-  apiUrl: 'http://localhost:8000',
-  production: false
-};
-```
-
-## 🚀 Compilation et Démarrage
-
-### Démarrer le Backend
+#### Backend
 
 ```bash
 cd backend
 
-# Activer l'environnement virtuel (si pas déjà activé)
-# Windows: venv\Scripts\activate
-# macOS/Linux: source venv/bin/activate
+# Activer l'environnement virtuel
+# Windows : venv\Scripts\activate
+# Linux/macOS : source venv/bin/activate
 
-# Initialiser la base de données (première fois)
-python -m alembic upgrade head
-
-# Démarrer le serveur FastAPI
+# Lancer le serveur de développement FastAPI
 python main.py
 
-# Ou utiliser uvicorn directement
+# Ou avec uvicorn pour plus de contrôle
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-Le backend sera accessible à : `http://localhost:8000`
-Documentation API Swagger : `http://localhost:8000/docs`
-
-### Démarrer le Frontend
-
-Dans une nouvelle fenêtre de terminal :
-
-```bash
-cd frontend/guardnet
-
-# Mode développement
-npm start
-# Ou
-ng serve
-
-# L'application sera accessible à : http://localhost:4200
-```
-
-### Build pour Production
+**Accès** :
+- API : `http://localhost:8000`
+- Documentation Swagger : `http://localhost:8000/docs`
+- Documentation ReDoc : `http://localhost:8000/redoc`
 
 #### Frontend
+
+Dans un nouveau terminal :
+
 ```bash
 cd frontend/guardnet
 
-# Build de production
-npm run build
-# Ou
-ng build --configuration production
-
-# Les fichiers générés seront dans dist/guardnet/
+# Lancer le serveur de développement Angular
+npm start
+# Ou : ng serve
 ```
 
-#### Backend
+**Accès** : `http://localhost:4200`
+
+### Exécution en Mode Production
+
+#### Build Frontend
+
+```bash
+cd frontend/guardnet
+
+# Générer les fichiers optimisés pour la production
+npm run build
+# Ou : ng build --configuration production
+
+# Les fichiers générés sont dans : dist/guardnet/
+```
+
+#### Build Backend
+
 ```bash
 cd backend
 
-# Créer une build de production
-python -m pip install gunicorn
+# Installer gunicorn
+pip install gunicorn
 
-# Démarrer avec gunicorn
-gunicorn -w 4 -b 0.0.0.0:8000 main:app
+# Lancer avec gunicorn (exemple 4 workers)
+gunicorn -w 4 -b 0.0.0.0:8000 --timeout 120 main:app
 ```
 
-## 📂 Structure du Projet
+---
+
+## Structure du Code Source
 
 ```
 GurdnetPfa/
-├── backend/                          # API Backend (Python/FastAPI)
+├── backend/                          # Module serveur (Python/FastAPI)
 │   ├── main.py                      # Point d'entrée de l'application
-│   ├── requirements.txt              # Dépendances Python
-│   ├── database.py                  # Configuration de la BD
-│   ├── core/                        # Configuration centrale
-│   ├── models/                      # Modèles SQLAlchemy
-│   ├── schemas/                     # Schémas Pydantic
-│   ├── routers/                     # Routes API
-│   ├── services/                    # Logique métier
-│   ├── ia/                          # Module IA (Isolation Forest)
-│   └── dependencies/                # Dépendances FastAPI
+│   ├── database.py                  # Configuration ORM SQLAlchemy
+│   ├── requirements.txt              # Dépendances Python (pip)
+│   ├── test_db.py                   # Tests de connexion BD
+│   │
+│   ├── core/
+│   │   └── security.py              # Fonctions d'authentification JWT
+│   │
+│   ├── dependencies/
+│   │   └── auth.py                  # Dépendances FastAPI (auth)
+│   │
+│   ├── models/
+│   │   ├── __init__.py
+│   │   └── models.py                # Modèles SQLAlchemy (entités BD)
+│   │
+│   ├── schemas/
+│   │   ├── __init__.py
+│   │   ├── scan.py                  # Schémas Pydantic (requêtes/réponses scan)
+│   │   └── user.py                  # Schémas Pydantic (user)
+│   │
+│   ├── routers/
+│   │   ├── __init__.py
+│   │   ├── auth.py                  # Endpoints authentification
+│   │   ├── scan.py                  # Endpoints scan réseau
+│   │   ├── alerts.py                # Endpoints alertes
+│   │   ├── anomaly.py               # Endpoints anomalies
+│   │   ├── monitoring.py            # Endpoints monitoring
+│   │   ├── settings.py              # Endpoints configuration
+│   │   └── users.py                 # Endpoints utilisateurs
+│   │
+│   ├── services/
+│   │   ├── __init__.py
+│   │   ├── scanner.py               # Logique scanner (nmap)
+│   │   ├── alerts_service.py        # Logique génération alertes
+│   │   ├── monitoring_service.py    # Logique monitoring (psutil, snmp)
+│   │   ├── auth_service.py          # Logique authentification
+│   │   ├── demo_seed.py             # Script de peuplement BD
+│   │   └── scan_db.json             # Cache scans réseau
+│   │
+│   ├── ia/
+│   │   ├── __init__.py
+│   │   ├── train.py                 # Entraînement modèle Isolation Forest
+│   │   └── predict.py               # Inférence modèle (détection anomalies)
+│   │
+│   └── tmp/                         # Fichiers temporaires (logs, caches)
 │
-├── frontend/guardnet/               # Frontend Angular
-│   ├── src/
-│   │   ├── index.html              # Fichier HTML principal
-│   │   ├── main.ts                 # Point d'entrée TypeScript
-│   │   ├── app/
-│   │   │   ├── app.routes.ts       # Routes
-│   │   │   ├── pages/              # Pages de l'application
-│   │   │   ├── components/         # Composants réutilisables
-│   │   │   └── services/           # Services (appels API, auth)
-│   │   └── styles.css              # Styles globaux
+├── frontend/guardnet/               # Module client (Angular 21)
 │   ├── package.json                # Dépendances npm
-│   ├── angular.json                # Configuration Angular
-│   └── tailwind.config.js           # Configuration Tailwind CSS
+│   ├── angular.json                # Configuration Angular CLI
+│   ├── tailwind.config.js           # Configuration Tailwind CSS
+│   ├── tsconfig.json               # Configuration TypeScript
+│   │
+│   └── src/
+│       ├── index.html              # Point d'entrée HTML
+│       ├── main.ts                 # Bootstrap application
+│       ├── main.server.ts          # SSR bootstrap
+│       ├── server.ts               # Serveur Express (SSR optionnel)
+│       ├── styles.css              # Styles globaux
+│       │
+│       └── app/
+│           ├── app.ts              # Root component
+│           ├── app.html            # Root template
+│           ├── app.routes.ts       # Définition des routes
+│           ├── app.config.ts       # Configuration Angular
+│           │
+│           ├── pages/              # Composants de pages
+│           │   ├── login/          # Page authentification
+│           │   ├── dashboard/      # Page tableau de bord
+│           │   ├── scan/           # Page scan réseau
+│           │   ├── alertes/        # Page alertes
+│           │   ├── anomalies/      # Page anomalies détectées
+│           │   ├── network/        # Page visualisation réseau
+│           │   └── profil/         # Page profil utilisateur
+│           │
+│           ├── components/         # Composants réutilisables
+│           │   ├── sidebar/        # Barre de navigation
+│           │   └── network-map/    # Visualisation réseau interactive
+│           │
+│           └── services/           # Services Angular
+│               ├── auth.ts         # Service authentification
+│               ├── monitoring.ts   # Service monitoring/alertes
+│               └── seed.data.ts    # Données de démonstration
 │
-└── RAPPORT_FONCTIONNALITES.md       # Documentation des fonctionnalités
+├── README.md                        # Ce fichier
+└── RAPPORT_FONCTIONNALITES.md       # Documentation fonctionnelle détaillée
 ```
 
-## ✨ Fonctionnalités Principales
+---
 
-### 🔐 Authentification
-- Connexion sécurisée avec JWT
-- Gestion des profils administrateur
+## Descriptions Techniques des Modules
 
-### 📊 Dashboard
-- Vue d'ensemble du réseau
-- Statistiques en temps réel (nombre de machines, CPU moyen, RAM moyenne, latence)
-- Machines actives et indisponibles
+### Module IA : Détection d'Anomalies
 
-### 🔍 Scan Réseau
-- Scan rapide ou complet
-- Détection des machines et ports ouverts
-- Export en CSV
-- Historique des scans
+**Localisation** : `backend/ia/`
 
-### 🚨 Alertes
-- Génération automatique d'alertes
-- Filtrage par type, sévérité, statut et IP
-- Résolution manuelle des alertes
-- Types : nouvel appareil, changement de port, indisponibilité, latence élevée, etc.
+Le module IA utilise un modèle **Isolation Forest** pour détecter les anomalies comportementales du réseau.
 
-### 🗺️ Carte Réseau
-- Visualisation des machines sous forme de noeuds
-- Informations détaillées par machine
-- Raccourcis vers alertes et scans
+#### Entraînement (`train.py`)
+- Collecte les données historiques de monitoring
+- Normalise les features : latence, CPU, RAM, nombre de ports, nombre de nouveaux appareils
+- Entraîne le modèle Isolation Forest
+- Sauvegarde le modèle sérialisé
 
-### 🤖 Détection IA des Anomalies
-- Modèle Isolation Forest
-- Analyse combinée : latence, CPU, RAM, ports ouverts
-- Génération automatique d'alertes d'anomalies
-- Historique des prédictions
+#### Inférence (`predict.py`)
+- Charge le modèle entraîné
+- Effectue les prédictions sur les données récentes
+- Génère automatiquement des alertes pour les anomalies détectées
+- Horodatage : heure de la journée incluse comme feature
 
-### 📋 Monitoring
-- Suivi en temps réel des machines
-- Inventaire et métriques (CPU, RAM, latence)
-- Détection automatique de changements
+### Module Scanner Réseau
 
-## 🔐 Commandes Utiles
+**Localisation** : `backend/services/scanner.py`
 
+Effectue des scans réseau utilisant **nmap** :
+- Scan rapide (SYN) : détection des machines actives
+- Scan complet (full port + OS detection)
+- Extraction des informations : adresses IP, hostnames, OS, ports ouverts
+- Comparaison avec scans antérieurs pour détecter les changements
+- Export des résultats en CSV
+
+### Module Monitoring
+
+**Localisation** : `backend/services/monitoring_service.py`
+
+Collecte les métriques des équipements :
+- **Locales** : CPU (%), RAM (%), processus
+- **Distantes** : SNMP (si configuré), ping (latence)
+- **Historique** : Conservation des données pour l'analyse temporelle
+- **Alertes** : Génération automatique basée sur seuils
+
+---
+
+## Guide de Dépannage
+
+### Problème : Impossible de se connecter à PostgreSQL
+
+**Causes possibles** :
+- PostgreSQL n'est pas en cours d'exécution
+- URL de connexion incorrecte dans `.env`
+- Authentification non configurée
+
+**Solutions** :
 ```bash
-# Tests Backend
-python -m pytest
+# Vérifier que PostgreSQL fonctionne
+psql -U postgres -c "SELECT version();"
 
-# Tests Frontend
-npm run test
+# Ou avec Docker
+docker ps  # Vérifier que le conteneur s'exécute
 
-# Linting Backend
-flake8 backend/
-
-# Linting Frontend
-npm run lint
-
-# Formater le code
-black backend/
-prettier --write frontend/guardnet/src/
-
-# Voir les logs
-# Backend: Vérifier la sortie de la console uvicorn
-# Frontend: Ouvrir les DevTools du navigateur (F12)
+# Tester la connexion
+psql -h localhost -U postgres -d guardnet_db
 ```
 
-## 🐛 Dépannage
+### Problème : Port déjà en utilisation
 
-### Erreur de connexion à PostgreSQL
-```
-Vérifier que PostgreSQL est en cours d'exécution
-Vérifier les credentials dans le fichier .env
-Vérifier l'existence de la base de données guardnet_db
-```
+**Cause** : Une autre application utilise le port 8000 ou 4200
 
-### Port déjà en utilisation
+**Solution** :
 ```bash
-# Changer le port
-# Backend: uvicorn main:app --port 8001
-# Frontend: ng serve --port 4201
+# Backend sur port 8001
+uvicorn main:app --port 8001
+
+# Frontend sur port 4201
+ng serve --port 4201
 ```
 
-### Problèmes d'importation Python
+### Problème : Module Python non trouvé
+
+**Cause** : L'environnement virtuel n'est pas activé ou les dépendances ne sont pas installées
+
+**Solution** :
 ```bash
+# Activer l'environnement virtuel
+source venv/bin/activate  # Linux/macOS
+# Ou : venv\Scripts\activate  # Windows
+
 # Réinstaller les dépendances
 pip install --upgrade -r requirements.txt
 ```
 
-### Problèmes npm
+### Problème : Erreurs d'importation Node.js
+
+**Cause** : Dépendances npm non installées ou corrompues
+
+**Solution** :
 ```bash
-# Nettoyer le cache npm
+cd frontend/guardnet
+
+# Nettoyer les caches
 npm cache clean --force
 rm -rf node_modules package-lock.json
+
+# Réinstaller
 npm install
 ```
 
-## 📞 Support et Contribution
+### Problème : Modèle IA non trouvé
 
-Pour toute question ou problème, veuillez consulter la documentation ou ouvrir une issue sur le dépôt GitHub.
+**Cause** : Le modèle Isolation Forest n'a pas été entraîné
 
-## 📄 Licence
-
-Ce projet est développé à titre académique. Tous les droits sont réservés.
+**Solution** :
+```bash
+cd backend
+python ia/train.py
+```
 
 ---
 
-**Version du Projet** : 1.0.0  
-**Dernière mise à jour** : Mai 2026
+## Références et Documentation
+
+- [FastAPI Official Docs](https://fastapi.tiangolo.com/)
+- [Angular Official Docs](https://angular.io/docs)
+- [SQLAlchemy ORM](https://docs.sqlalchemy.org/)
+- [Pydantic Validation](https://docs.pydantic.dev/)
+- [PostgreSQL Documentation](https://www.postgresql.org/docs/)
+
+---
+
+## Auteurs et Contexte Académique
+
+**Projet** : GuardNet  
+**Contexte** : Projet académique PFA (Projet de Fin d'Année)  
+**Date** : Mai 2026  
+**Repository** : https://github.com/NourAlaounia14/GurdnetPfa  
+**Branche Active** : `feature/abir-j7-j10`
+
+---
+
+## Licence
+
+Ce projet est développé à titre académique. Tous les droits sont réservés.
