@@ -1,3 +1,23 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: #08111f;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.health-card { min-width: 180px; border: 1px solid rgba(148, 163, 184, 0.16); border-radius: 8px; padding: 12px 14px; background: rgba(2, 6, 23, 0.35); }
+.health-card span { display: block; color: #8aa0bb; font-size: 12px; font-weight: 800; }
+.health-card strong { display: block; margin-top: 5px; color: #e5eefb; font-size: 20px; }
+.settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.settings-grid label { color: #9fb2cc; font-size: 12px; font-weight: 800; }
+.settings-grid input { width: 100%; margin-top: 5px; border: 1px solid rgba(125,211,252,.24); border-radius: 8px; padding: 8px; color: #e5eefb; background: #020617; }
+.settings-save { margin-top: 12px; }
+.settings-message { margin: 10px 0 0; color: #bbf7d0 !important; }

@@ -41,7 +41,7 @@ def create_token(user_id: int, email: str) -> str:
     payload = {
         "user_id": user_id,
         "email": email,
-        "exp": datetime.utcnow() + timedelta(hours=24)
+        "exp": datetime.utcnow() + timedelta(minutes=30)
     }
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 

@@ -4,9 +4,22 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from dependencies.auth import get_current_user
-from models.models import Alert
+from models.models import Alert, Device
 
 router = APIRouter(prefix="/alerts", tags=["Alertes"])
+
+
+def _alert_payload(alert: Alert) -> dict:
+    return {
+        "id": alert.id,
+        "type": alert.type,
+        "severity": alert.severity,
+        "message": alert.message,
+        "device_id": alert.device_id,
+        "device_ip": alert.device.ip if alert.device else None,
+        "resolved": alert.resolved,
+        "created_at": alert.created_at.isoformat() if alert.created_at else None,
+    }
 
 
 @router.get("")
@@ -15,11 +28,12 @@ def list_alerts(
     severity: str | None = Query(None),
     resolved: bool | None = Query(None),
     device_id: int | None = Query(None),
+    device_ip: str | None = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
 ):
-    query = db.query(Alert)
+    query = db.query(Alert).outerjoin(Device)
     if type:
         query = query.filter(Alert.type == type)
     if severity:
@@ -28,33 +42,35 @@ def list_alerts(
         query = query.filter(Alert.resolved == resolved)
     if device_id is not None:
         query = query.filter(Alert.device_id == device_id)
+    if device_ip:
+        query = query.filter(Device.ip == device_ip)
 
     alerts = query.order_by(Alert.created_at.desc()).offset(skip).limit(limit).all()
-    return alerts
+    return [_alert_payload(alert) for alert in alerts]
 
 
 @router.patch("/{alert_id}/resolve")
 def resolve_alert(
     alert_id: int,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user),
+    current_user=Depends(get_current_user),
 ):
     alert = db.query(Alert).filter(Alert.id == alert_id).first()
     if not alert:
         raise HTTPException(status_code=404, detail="Alerte introuvable")
     if alert.resolved:
-        return {"message": "Alerte déjà résolue", "alert_id": alert_id}
+        return {"message": "Alerte deja resolue", "alert_id": alert_id}
 
     alert.resolved = True
     db.commit()
     db.refresh(alert)
-    return {"message": "Alerte résolue", "alert_id": alert_id}
+    return {"message": "Alerte resolue", "alert_id": alert_id}
 
 
 @router.get("/stats")
 def alert_stats(db: Session = Depends(get_db)):
     total = db.query(func.count(Alert.id)).scalar() or 0
-    unresolved = db.query(func.count(Alert.id)).filter(Alert.resolved == False).scalar() or 0
+    unresolved = db.query(func.count(Alert.id)).filter(Alert.resolved.is_(False)).scalar() or 0
     per_type = {type_name: count for type_name, count in db.query(Alert.type, func.count(Alert.id)).group_by(Alert.type).all()}
     per_severity = {severity_name: count for severity_name, count in db.query(Alert.severity, func.count(Alert.id)).group_by(Alert.severity).all()}
     return {

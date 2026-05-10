@@ -15,7 +15,10 @@ export class Login {
   email: string = '';
   password: string = '';
   errorMessage: string = '';
+  successMessage = '';
   isLoading: boolean = false;
+  mode: 'login' | 'register' = 'login';
+  nom = '';
 
   constructor(private authService: Auth, private router: Router) {}
 
@@ -31,6 +34,24 @@ export class Login {
       error: (err) => {
         this.isLoading = false;
         this.errorMessage = 'Email ou mot de passe incorrect';
+      },
+    });
+  }
+
+  onRegister(): void {
+    this.errorMessage = '';
+    this.successMessage = '';
+    this.isLoading = true;
+
+    this.authService.register(this.nom, this.email, this.password).subscribe({
+      next: () => {
+        this.isLoading = false;
+        this.successMessage = 'Compte administrateur cree. Vous pouvez vous connecter.';
+        this.mode = 'login';
+      },
+      error: (err) => {
+        this.isLoading = false;
+        this.errorMessage = err.error?.detail || 'Impossible de creer le compte administrateur';
       },
     });
   }

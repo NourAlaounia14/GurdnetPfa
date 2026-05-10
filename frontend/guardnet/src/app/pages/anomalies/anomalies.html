@@ -1,1 +1,155 @@
-<p>anomalies works!</p>
+<div class="anomalies-page">
+  <header class="page-header">
+    <div class="header-content">
+      <p class="eyebrow">GuardNet</p>
+      <h1>Détection d’anomalies réseau</h1>
+      <p class="subtitle">Analyse automatique et manuelle du comportement réseau avec score, confiance et historique.</p>
+    </div>
+
+    <div class="header-stats">
+      <div class="stat-card">
+        <span class="stat-label">Anomalies détectées</span>
+        <span class="stat-value">{{ getAnomalyCount() }}</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Score moyen</span>
+        <span class="stat-value" [style.color]="getScoreColor(getAverageScore())">{{ getAverageScore() }}%</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Historique</span>
+        <span class="stat-value">{{ anomalyHistory.length }} analyses</span>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <button class="btn-analyze" (click)="analyzeNow()" [disabled]="analyzing">
+        {{ analyzing ? 'Analyse en cours...' : 'Analyser maintenant' }}
+      </button>
+      <button class="btn-secondary" (click)="exportCsv()">Exporter CSV</button>
+    </div>
+  </header>
+
+  <div *ngIf="loading" class="loading">
+    <p>Chargement de l’historique IA...</p>
+  </div>
+
+  <div *ngIf="error" class="error">
+    {{ error }}
+  </div>
+
+  <main *ngIf="!loading && !error" class="content">
+    <section class="analysis-result">
+      <div class="result-header">
+        <span class="result-icon" [class.alert]="getLatestScore() >= 60">{{ getLatestScore() >= 60 ? '!' : 'OK' }}</span>
+        <div>
+          <h2>Dernière prédiction IA</h2>
+          <p class="result-subtitle">Score {{ getLatestScore() }}% · confiance {{ getLatestConfidence() }}</p>
+        </div>
+      </div>
+      <div class="result-grid">
+        <div *ngFor="let feature of featureSpecs" class="feature-proof">
+          <span>{{ feature.label }}</span>
+          <strong>{{ getFeatureValue(feature.key) }}</strong>
+        </div>
+      </div>
+      <button *ngIf="getLatestSource()?.alert_id" type="button" class="btn-alert" (click)="openAlert(getLatestSource()?.alert_id)">Voir l’alerte liée</button>
+    </section>
+
+    <section class="scheduler-section">
+      <div>
+        <h2>Surveillance automatique</h2>
+        <p>Une analyse est lancée régulièrement en arrière-plan. En cas d’anomalie, GuardNet crée une alerte pour l’administrateur.</p>
+      </div>
+      <span class="status-pill">cycle 5 min</span>
+    </section>
+
+    <section class="chart-section">
+      <div class="panel-title">
+        <h2>Score d’anomalie dans le temps</h2>
+        <p>Graphique linéaire des prédictions sauvegardées dans AnomalyLog.</p>
+      </div>
+      <div class="chart-container">
+        <canvas id="anomaly-chart"></canvas>
+      </div>
+      <div class="chart-legend">
+        <div class="legend-item">
+          <div class="legend-color normal"></div>
+          <span>Normal</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color anomaly"></div>
+          <span>Anomalie</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color threshold"></div>
+          <span>Repère risque</span>
+        </div>
+      </div>
+    </section>
+
+    <section *ngIf="getRecentAnomalies().length > 0" class="recent-anomalies">
+      <h2>Anomalies récentes</h2>
+      <div class="recent-table">
+        <div class="recent-row header">
+          <span>Date</span>
+          <span>Score</span>
+          <span>Lecture rapide</span>
+          <span>Alerte</span>
+        </div>
+        <div *ngFor="let anomaly of getRecentAnomalies()" class="recent-row">
+          <span>{{ formatDate(anomaly.timestamp) }}</span>
+          <strong [style.color]="getScoreColor((anomaly.score * 100))">{{ (anomaly.score * 100).toFixed(1) }}%</strong>
+          <span>{{ getAnomalyReason(anomaly) }}</span>
+          <div>
+            <button type="button" class="btn-alert small" (click)="openAlert(anomaly.alert_id)">Voir</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section *ngIf="anomalyHistory.length > 0" class="full-history">
+      <h2>Historique complet des analyses IA</h2>
+      <table class="history-table">
+        <thead>
+          <tr>
+            <th>Temps</th>
+            <th>Score</th>
+            <th>Statut</th>
+            <th>CPU %</th>
+            <th>RAM %</th>
+            <th>Latence</th>
+            <th>Ports</th>
+            <th>Alerte</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let log of anomalyHistory | slice: 0:20" [class.anomaly]="log.is_anomaly">
+            <td>{{ formatDate(log.timestamp) }}</td>
+            <td>
+              <span class="score-bar" [style.width]="(log.score * 100) + '%'">
+                {{ (log.score * 100).toFixed(1) }}%
+              </span>
+            </td>
+            <td>
+              <span class="status-badge" [class.is-anomaly]="log.is_anomaly">
+                {{ log.is_anomaly ? 'Anomalie' : 'Normal' }}
+              </span>
+            </td>
+            <td>{{ formatLogFeature(log, 'cpu_percent', 1) }}%</td>
+            <td>{{ formatLogFeature(log, 'ram_percent', 1) }}%</td>
+            <td>{{ formatLogFeature(log, 'latency_ms', 0) }} ms</td>
+            <td>{{ formatLogFeature(log, 'nb_open_ports', 0) }}</td>
+            <td>
+              <button *ngIf="log.is_anomaly" type="button" class="btn-alert small" (click)="openAlert(log.alert_id)">Voir</button>
+              <span *ngIf="!log.is_anomaly">-</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section *ngIf="anomalyHistory.length === 0" class="empty-state">
+      <p>Aucune analyse IA disponible. Lancez une analyse manuelle pour créer la première entrée AnomalyLog.</p>
+    </section>
+  </main>
+</div>

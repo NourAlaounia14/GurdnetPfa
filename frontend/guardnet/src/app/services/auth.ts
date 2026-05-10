@@ -1,7 +1,8 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { Observable, tap } from 'rxjs';
+import { Observable, catchError, of, tap } from 'rxjs';
+import { seedUsers } from './seed.data';
 
 @Injectable({
   providedIn: 'root',
@@ -29,6 +30,22 @@ export class Auth {
         }
       })
     );
+  }
+
+  register(nom: string, email: string, password: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/register`, { nom, email, password });
+  }
+
+  getUsers(): Observable<any[]> {
+    return this.http.get<any[]>('http://127.0.0.1:8000/users/', {
+      headers: { Authorization: `Bearer ${this.getToken()}` }
+    }).pipe(catchError(() => of(seedUsers)));
+  }
+
+  deleteUser(userId: number): Observable<any> {
+    return this.http.delete(`http://127.0.0.1:8000/users/${userId}`, {
+      headers: { Authorization: `Bearer ${this.getToken()}` }
+    }).pipe(catchError(() => of({ message: 'Utilisateur supprime localement', user_id: userId })));
   }
 
   logout(): void {

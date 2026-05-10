@@ -1,107 +1,136 @@
-from fastapi import APIRouter, Depends, BackgroundTasks, HTTPException
+import asyncio
+import io
+from datetime import datetime
+
+import pandas as pd
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
-from database import get_db
-from models.models import Scan, ScanResult, Device
+
+from database import SessionLocal, get_db
+from models.models import Device, Scan, ScanResult
 from schemas.scan import ScanRequest
+from services.alerts_service import check_port_scan, create_alert
 from services.scanner import NetworkScanner
-from services.alerts_service import create_alert
-import asyncio, io, pandas as pd
-from datetime import datetime
 
 router = APIRouter(prefix="/scan", tags=["Scan"])
 scanner = NetworkScanner()
 
-async def run_scan(ip_range, scan_type, scan_id, db: Session):
+
+def _scanner_profile(scan_type: str) -> str:
+    return "full" if scan_type == "complet" else "quick"
+
+
+async def run_scan(ip_range: str, scan_type: str, scan_id: int) -> None:
     loop = asyncio.get_event_loop()
-    results = await loop.run_in_executor(None, scanner.scan, ip_range, scan_type)
+    raw_result = await loop.run_in_executor(None, scanner.scan, ip_range, _scanner_profile(scan_type))
+    results = raw_result.get("hosts", []) if isinstance(raw_result, dict) else []
 
-    existing_ips = {d.ip for d in db.query(Device).all()}
+    db = SessionLocal()
+    try:
+        existing_ips = {device.ip for device in db.query(Device).all()}
 
-    for r in results:
-        r["is_new"] = r["ip"] not in existing_ips
-
-        device = db.query(Device).filter(Device.ip == r["ip"]).first()
-        previous_scan = db.query(ScanResult).filter(ScanResult.device_ip == r["ip"]).order_by(ScanResult.id.desc()).first()
-
-        if not device:
-            device = Device(
-                ip=r["ip"],
-                hostname=r["hostname"],
-                os_name=r["os_name"],
-                device_type=r["device_type"],
-                status="up" if r["state"] == "up" else "down"
+        for result in results:
+            result["is_new"] = result["ip"] not in existing_ips
+            device = db.query(Device).filter(Device.ip == result["ip"]).first()
+            previous_scan = (
+                db.query(ScanResult)
+                .filter(ScanResult.device_ip == result["ip"])
+                .order_by(ScanResult.id.desc())
+                .first()
             )
-            db.add(device)
+
+            status = "online" if result.get("state") == "up" else "offline"
+            if not device:
+                device = Device(
+                    ip=result["ip"],
+                    hostname=result.get("hostname"),
+                    os_name=result.get("os_name"),
+                    device_type=result.get("device_type") or "unknown",
+                    status=status,
+                    last_seen=datetime.utcnow() if status == "online" else None,
+                )
+                db.add(device)
+                db.flush()
+                alert_type = "NEW_UNKNOWN_DEVICE" if device.device_type == "unknown" else "NEW_DEVICE"
+                create_alert(
+                    db,
+                    alert_type,
+                    device_id=device.id,
+                    metadata={"ip": result["ip"], "device_type": device.device_type},
+                )
+            else:
+                current_ports = {port["port"] for port in result.get("ports", [])}
+                previous_ports = {port["port"] for port in (previous_scan.ports or [])} if previous_scan else set()
+                added_ports = sorted(current_ports - previous_ports)
+                removed_ports = sorted(previous_ports - current_ports)
+
+                if added_ports or removed_ports:
+                    create_alert(
+                        db,
+                        "PORT_CHANGE",
+                        device_id=device.id,
+                        metadata={"ip": result["ip"], "added": added_ports, "removed": removed_ports},
+                    )
+
+                if status == "offline" and device.status != "offline":
+                    create_alert(db, "DEVICE_DOWN", device_id=device.id, metadata={"ip": result["ip"]})
+
+                device.hostname = result.get("hostname")
+                device.os_name = result.get("os_name")
+                device.device_type = result.get("device_type") or "unknown"
+                device.status = status
+                if status == "online":
+                    device.last_seen = datetime.utcnow()
+
+            scan_result = ScanResult(
+                scan_id=scan_id,
+                device_ip=result["ip"],
+                hostname=result.get("hostname"),
+                os_name=result.get("os_name"),
+                device_type=result.get("device_type") or "unknown",
+                ports=result.get("ports", []),
+                is_new=result["is_new"],
+            )
+            db.add(scan_result)
             db.flush()
-            create_alert(
-                db,
-                "NEW_DEVICE",
-                device_id=device.id,
-                metadata={"ip": r["ip"], "device_type": r["device_type"]},
-            )
-        else:
-            current_ports = {p["port"] for p in r["ports"]}
-            previous_ports = {p["port"] for p in (previous_scan.ports or [])} if previous_scan else set()
-            added_ports = sorted(list(current_ports - previous_ports))
-            removed_ports = sorted(list(previous_ports - current_ports))
+            check_port_scan(result["ip"], db)
 
-            if added_ports or removed_ports:
-                create_alert(
-                    db,
-                    "PORT_CHANGE",
-                    device_id=device.id,
-                    metadata={
-                        "ip": r["ip"],
-                        "added": added_ports,
-                        "removed": removed_ports,
-                    },
-                )
+        scan_obj = db.query(Scan).filter(Scan.id == scan_id).first()
+        if scan_obj:
+            scan_obj.finished_at = datetime.utcnow()
+            scan_obj.devices_found = len(results)
+        db.commit()
+        print(f"[SCAN {scan_id}] Termine : {len(results)} devices")
+    finally:
+        db.close()
 
-            if r["state"] == "down" and device.status != "down":
-                create_alert(
-                    db,
-                    "DEVICE_DOWN",
-                    device_id=device.id,
-                    metadata={"ip": r["ip"]},
-                )
-
-            device.hostname = r["hostname"]
-            device.os_name = r["os_name"]
-            device.device_type = r["device_type"]
-            device.status = "up" if r["state"] == "up" else "down"
-            device.last_seen = datetime.now()
-
-        scan_result = ScanResult(
-            scan_id=scan_id,
-            device_ip=r["ip"],
-            hostname=r["hostname"],
-            os_name=r["os_name"],
-            device_type=r["device_type"],
-            ports=r["ports"],
-            is_new=r["is_new"]
-        )
-        db.add(scan_result)
-
-    scan_obj = db.query(Scan).filter(Scan.id == scan_id).first()
-    scan_obj.finished_at = datetime.now()
-    scan_obj.devices_found = len(results)
-    db.commit()
-    print(f"[SCAN {scan_id}] Terminé : {len(results)} devices")
 
 @router.post("/start")
 async def start_scan(request: ScanRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
-    scan = Scan(ip_range=request.ip_range, scan_type=request.scan_type)
+    scan = Scan(ip_range=request.ip_range, scan_type="complet")
     db.add(scan)
     db.commit()
     db.refresh(scan)
-    background_tasks.add_task(run_scan, request.ip_range, request.scan_type, scan.id, db)
-    return {"scan_id": scan.id, "status": "en cours", "ip_range": request.ip_range}
+    background_tasks.add_task(run_scan, request.ip_range, "complet", scan.id)
+    return {"scan_id": scan.id, "status": "en cours", "ip_range": request.ip_range, "scan_type": "complet"}
+
 
 @router.get("/history")
 def get_scan_history(skip: int = 0, limit: int = 20, db: Session = Depends(get_db)):
     scans = db.query(Scan).order_by(Scan.started_at.desc()).offset(skip).limit(limit).all()
-    return scans
+    return [
+        {
+            "id": scan.id,
+            "ip_range": scan.ip_range,
+            "scan_type": scan.scan_type,
+            "started_at": scan.started_at,
+            "finished_at": scan.finished_at,
+            "devices_found": scan.devices_found or 0,
+        }
+        for scan in scans
+    ]
+
 
 @router.get("/{scan_id}")
 def get_scan_detail(scan_id: int, db: Session = Depends(get_db)):
@@ -109,30 +138,57 @@ def get_scan_detail(scan_id: int, db: Session = Depends(get_db)):
     if not scan:
         raise HTTPException(status_code=404, detail="Scan introuvable")
     results = db.query(ScanResult).filter(ScanResult.scan_id == scan_id).all()
-    return {"scan": scan, "devices": results}
+    return {
+        "scan": {
+            "id": scan.id,
+            "ip_range": scan.ip_range,
+            "scan_type": scan.scan_type,
+            "started_at": scan.started_at,
+            "finished_at": scan.finished_at,
+            "devices_found": scan.devices_found or 0,
+        },
+        "devices": [
+            {
+                "id": result.id,
+                "scan_id": result.scan_id,
+                "device_ip": result.device_ip,
+                "ip": result.device_ip,
+                "hostname": result.hostname,
+                "os_name": result.os_name,
+                "device_type": result.device_type or "unknown",
+                "ports": result.ports or [],
+                "is_new": result.is_new,
+            }
+            for result in results
+        ],
+    }
+
 
 @router.get("/{scan_id}/export")
 def export_scan_csv(scan_id: int, db: Session = Depends(get_db)):
     results = db.query(ScanResult).filter(ScanResult.scan_id == scan_id).all()
     if not results:
         raise HTTPException(status_code=404, detail="Scan introuvable ou vide")
+
     rows = []
-    for r in results:
-        ports_str = ", ".join([f"{p['port']}/{p['service']}" for p in (r.ports or [])])
-        rows.append({
-            "IP": r.device_ip,
-            "Hostname": r.hostname,
-            "OS": r.os_name,
-            "Type": r.device_type,
-            "Ports": ports_str,
-            "Nouveau": "Oui" if r.is_new else "Non"
-        })
-    df = pd.DataFrame(rows)
+    for result in results:
+        ports_str = ", ".join([f"{port.get('port')}/{port.get('service')}" for port in (result.ports or [])])
+        rows.append(
+            {
+                "IP": result.device_ip,
+                "Hostname": result.hostname,
+                "OS": result.os_name,
+                "Device Type": result.device_type or "unknown",
+                "Ports": ports_str,
+                "Nouveau": "Oui" if result.is_new else "Non",
+            }
+        )
+
     stream = io.StringIO()
-    df.to_csv(stream, index=False)
+    pd.DataFrame(rows).to_csv(stream, index=False)
     stream.seek(0)
     return StreamingResponse(
         iter([stream.getvalue()]),
         media_type="text/csv",
-        headers={"Content-Disposition": f"attachment; filename=scan_{scan_id}.csv"}
+        headers={"Content-Disposition": f"attachment; filename=scan_{scan_id}.csv"},
     )

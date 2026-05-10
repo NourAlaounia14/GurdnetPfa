@@ -3,15 +3,18 @@
   justify-content: center;
   align-items: center;
   height: 100vh;
-  background-color: #f0f2f5;
+  background:
+    radial-gradient(circle at top right, rgba(14, 165, 233, 0.18), transparent 35%),
+    #08111f;
 }
 
 .login-card {
-  background: white;
-  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.94);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 8px;
   padding: 40px;
   width: 400px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.32);
 }
 
 .login-header {
@@ -20,18 +23,37 @@
 }
 
 .shield-icon {
-  font-size: 48px;
+  display: grid;
+  place-items: center;
+  width: 62px;
+  height: 62px;
+  margin: 0 auto;
+  border: 1px solid rgba(34, 211, 238, 0.42);
+  border-radius: 8px;
+  background: linear-gradient(135deg, #0f766e, #1d4ed8);
+  color: #ecfeff;
+  box-shadow: 0 16px 38px rgba(8, 145, 178, 0.26);
+}
+
+.shield-icon svg {
+  width: 38px;
+  height: 38px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .login-header h1 {
   font-size: 28px;
   font-weight: 700;
-  color: #1a1a2e;
+  color: #f8fbff;
   margin: 8px 0 4px;
 }
 
 .login-header p {
-  color: #666;
+  color: #9fb2cc;
   font-size: 14px;
 }
 
@@ -39,19 +61,43 @@
   margin-bottom: 20px;
 }
 
+.mode-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 22px;
+}
+
+.mode-switch button {
+  border: 1px solid rgba(125, 211, 252, 0.24);
+  border-radius: 8px;
+  padding: 10px;
+  color: #9fb2cc;
+  background: rgba(2, 6, 23, 0.35);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.mode-switch button.active {
+  color: #ecfeff;
+  background: rgba(14, 165, 233, 0.18);
+}
+
 .form-group label {
   display: block;
   font-size: 14px;
   font-weight: 500;
-  color: #333;
+  color: #cbd5e1;
   margin-bottom: 6px;
 }
 
 .form-input {
   width: 100%;
   padding: 12px 16px;
-  border: 1px solid #ddd;
+  border: 1px solid rgba(125, 211, 252, 0.24);
   border-radius: 8px;
+  color: #e5eefb;
+  background: rgba(2, 6, 23, 0.52);
   font-size: 14px;
   outline: none;
   transition: border-color 0.2s;
@@ -59,7 +105,7 @@
 }
 
 .form-input:focus {
-  border-color: #4361ee;
+  border-color: #22d3ee;
 }
 
 .error-message {
@@ -91,4 +137,13 @@
 .login-btn:disabled {
   background-color: #aaa;
   cursor: not-allowed;
+}
+
+.success-message {
+  background: rgba(22, 101, 52, 0.25);
+  color: #bbf7d0;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  margin-bottom: 16px;
 }

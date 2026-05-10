@@ -1,24 +1,27 @@
-from pydantic import BaseModel, field_validator
-from typing import List
 import re
+from typing import List
+
+from pydantic import BaseModel, field_validator
+
 
 class ScanRequest(BaseModel):
     ip_range: str
-    scan_type: str = "rapide"
+    scan_type: str = "complet"
 
     @field_validator("ip_range")
-    def validate_ip_range(cls, v):
+    def validate_ip_range(cls, value):
         cidr_pattern = r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/\d{1,2}$"
         range_pattern = r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}-\d{1,3}$"
-        if not re.match(cidr_pattern, v) and not re.match(range_pattern, v):
+        if not re.match(cidr_pattern, value) and not re.match(range_pattern, value):
             raise ValueError("Format invalide. Exemple : 192.168.1.0/24")
-        return v
+        return value
 
     @field_validator("scan_type")
-    def validate_scan_type(cls, v):
-        if v not in ["rapide", "complet"]:
-            raise ValueError("scan_type doit être 'rapide' ou 'complet'")
-        return v
+    def validate_scan_type(cls, value):
+        if value != "complet":
+            raise ValueError("scan_type doit etre 'complet'")
+        return value
+
 
 class PortInfo(BaseModel):
     port: int
@@ -26,6 +29,7 @@ class PortInfo(BaseModel):
     service: str
     version: str
     is_new_port: bool
+
 
 class DeviceOut(BaseModel):
     ip: str
@@ -35,6 +39,7 @@ class DeviceOut(BaseModel):
     device_type: str
     ports: List[PortInfo]
     is_new: bool
+
 
 class ScanResponse(BaseModel):
     scan_id: int

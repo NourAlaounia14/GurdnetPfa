@@ -1,77 +1,242 @@
-<div class="dashboard">
-  <div class="dashboard-header">
-    <div>
-      <h1>Tableau de bord</h1>
-      <p class="refresh-info">Données mises à jour toutes les 30 secondes.</p>
+<div class="dashboard-shell">
+  <header class="dashboard-header">
+    <div class="brand-heading">
+      <span class="guardnet-logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24" role="img">
+          <path d="M12 2 20 5.5v6.2c0 5-3.3 8.8-8 10.3-4.7-1.5-8-5.3-8-10.3V5.5L12 2Z"></path>
+          <path d="M8.9 12.1 10.9 14l4.4-4.6"></path>
+        </svg>
+      </span>
+      <div>
+        <p class="eyebrow">GuardNet</p>
+        <h1>Supervision intelligente du réseau local</h1>
+        <p class="subtitle">Surveillance temps réel, scans complets, alertes et détection d’anomalies par IA.</p>
+      </div>
     </div>
-  </div>
 
-  <div class="cards-grid">
-    <div class="card">
-      <div class="card-info">
-        <span class="card-label">Total des appareils</span>
-        <span class="card-value">{{ summary.total }}</span>
-      </div>
+    <div class="header-actions">
+      <span class="refresh-info">Dernière mise à jour {{ updatedAt | date:'HH:mm:ss' }}</span>
+      <button type="button" class="btn secondary" (click)="generateReport()">Exporter rapport CSV</button>
     </div>
-    <div class="card">
-      <div class="card-info">
-        <span class="card-label">En ligne</span>
-        <span class="card-value green">{{ summary.online }}</span>
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-info">
-        <span class="card-label">Hors-ligne</span>
-        <span class="card-value red">{{ summary.offline }}</span>
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-info">
-        <span class="card-label">Pourcentage en ligne</span>
-        <span class="card-value">{{ getOnlinePercent() }}%</span>
-      </div>
-    </div>
-  </div>
+  </header>
 
-  <section class="section">
-    <h2>Dispositifs</h2>
-    <table class="devices-table">
-      <thead>
-        <tr>
-          <th>Nom</th>
-          <th>Type</th>
-          <th>Statut</th>
-          <th>IP</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let device of devices">
-          <td>{{ device.name }}</td>
-          <td>{{ device.device_type }}</td>
-          <td>
-            <span class="badge" [ngClass]="device.status === 'online' ? 'online' : 'offline'">
-              {{ device.status }}
-            </span>
-          </td>
-          <td>{{ device.ip || '—' }}</td>
-        </tr>
-        <tr *ngIf="devices.length === 0">
-          <td colspan="4" class="empty">Aucun appareil trouvé.</td>
-        </tr>
-      </tbody>
-    </table>
+  <section class="metrics-grid">
+    <button type="button" class="metric-card success" (click)="navigate('/carte-reseau')">
+      <span class="metric-label">Machines actives</span>
+      <span class="metric-number">{{ summary.online || 0 }}</span>
+      <span class="metric-detail">{{ getOnlinePercent() }}% disponibles sur {{ summary.total || 0 }} machines</span>
+    </button>
+
+    <button type="button" class="metric-card danger" (click)="navigate('/carte-reseau')">
+      <span class="metric-label">Machines hors ligne</span>
+      <span class="metric-number">{{ summary.offline || 0 }}</span>
+      <span class="metric-detail">Ping automatique toutes les {{ summary.monitoring_interval_sec || 30 }} s</span>
+    </button>
+
+    <button type="button" class="metric-card warning" (click)="navigate('/anomalies')">
+      <span class="metric-label">Score IA actuel</span>
+      <span class="metric-number">{{ getAiScore() }}%</span>
+      <span class="metric-detail">{{ getAiStatusLabel() }} · confiance {{ getConfidenceLabel() }}</span>
+    </button>
+
+    <div class="metric-card signal">
+      <span class="metric-label">Trafic réseau</span>
+      <span class="metric-number">{{ getLatestTraffic().total_packets || 0 }}</span>
+      <span class="metric-detail">TCP {{ getLatestTraffic().tcp_pct || 0 }}% · UDP {{ getLatestTraffic().udp_pct || 0 }}%</span>
+    </div>
   </section>
 
-  <section class="section">
-    <h2>Historique du trafic</h2>
-    <div *ngIf="trafficHistory.length === 0" class="empty">
-      Aucune donnée de trafic disponible.
-    </div>
-    <div *ngIf="trafficHistory.length > 0">
-      <div *ngFor="let item of trafficHistory" class="traffic-line">
-        <span>{{ item.time }}</span>
-        <span>{{ item.value }}</span>
+  <section class="operations-grid">
+    <article class="panel operation-panel ping-panel">
+      <div class="panel-header compact">
+        <div>
+          <h2>Scan rapide automatique</h2>
+          <p>Le monitoring effectue un ping ICMP sur chaque machine enregistrée toutes les 30 secondes.</p>
+        </div>
+        <span class="status-pill live">cycle 30 s</span>
       </div>
+      <div class="ping-summary">
+        <div><span>Dernier cycle</span><strong>{{ getMonitoringTimeLabel() }}</strong></div>
+        <div><span>En ligne</span><strong>{{ summary.online || 0 }}</strong></div>
+        <div><span>Hors ligne</span><strong>{{ summary.offline || 0 }}</strong></div>
+      </div>
+      <div class="offline-list" *ngIf="getOfflineDevices().length > 0">
+        <span *ngFor="let device of getOfflineDevices()">{{ device.ip }} · {{ device.hostname || 'machine inconnue' }}</span>
+      </div>
+    </article>
+
+    <article class="panel operation-panel scan-panel">
+      <div class="panel-header compact">
+        <div>
+          <h2>Scan complet manuel</h2>
+          <p>L’administrateur lance le scan complet pour détecter OS, services, ports ouverts et nouveaux appareils.</p>
+        </div>
+        <span class="status-pill">Nmap complet</span>
+      </div>
+      <div class="scan-inline-form">
+        <input [(ngModel)]="dashboardScanRange" placeholder="192.168.1.0/24" />
+        <button type="button" class="btn primary" (click)="startCompleteScan()" [disabled]="isScanStarting">
+          {{ isScanStarting ? 'Lancement...' : 'Lancer un scan complet' }}
+        </button>
+      </div>
+      <p class="inline-message" *ngIf="scanMessage">{{ scanMessage }}</p>
+    </article>
+  </section>
+
+  <section class="health-grid">
+    <div class="health-card">
+      <span>CPU serveur</span>
+      <strong>{{ summary.avg_cpu_percent || 0 }}%</strong>
     </div>
+    <div class="health-card">
+      <span>RAM serveur</span>
+      <strong>{{ summary.avg_ram_percent || 0 }}%</strong>
+    </div>
+    <div class="health-card">
+      <span>Latence moyenne</span>
+      <strong>{{ summary.avg_latency_ms || 0 }} ms</strong>
+    </div>
+    <div class="health-card">
+      <span>Alertes actives</span>
+      <strong>{{ alertStats.unresolved || alerts.length }}</strong>
+    </div>
+  </section>
+
+  <section class="dashboard-grid">
+    <article class="panel command-panel wide">
+      <div class="panel-header">
+        <div>
+          <h2>Analyse intelligente des anomalies</h2>
+          <p>GuardNet surveille le comportement du réseau et signale les situations inhabituelles.</p>
+        </div>
+        <span class="status-pill" [class.hot]="getAiScore() >= 60">{{ getAiStatusLabel() }}</span>
+      </div>
+
+      <div class="ai-score">
+        <div>
+          <span>Score anomalie</span>
+          <strong>{{ getAiScore() }}%</strong>
+          <small>Confiance {{ getConfidenceLabel() }}</small>
+        </div>
+        <button type="button" class="btn primary" (click)="runAiAnalysis()" [disabled]="isAnalyzing">
+          {{ isAnalyzing ? 'Analyse IA...' : 'Analyser maintenant' }}
+        </button>
+      </div>
+
+      <div class="ai-mini-grid">
+        <div>
+          <span>Dernière latence</span>
+          <strong>{{ getFeatureValue('latency_ms') }} ms</strong>
+        </div>
+        <div>
+          <span>Alertes 1 h</span>
+          <strong>{{ getFeatureValue('nb_alerts_1h') }}</strong>
+        </div>
+        <div>
+          <span>Nouveaux appareils</span>
+          <strong>{{ getFeatureValue('nb_new_devices') }}</strong>
+        </div>
+      </div>
+    </article>
+
+    <article class="panel">
+      <div class="panel-header compact">
+        <h2>Alertes récentes</h2>
+        <button type="button" class="link-btn" (click)="navigate('/alertes')">Voir toutes les alertes</button>
+      </div>
+
+      <div class="alert-list">
+        <button
+          type="button"
+          class="alert-row"
+          *ngFor="let alert of alerts"
+          (click)="alert.type === 'ANOMALY_DETECTED' ? navigate('/anomalies') : navigate('/alertes', { device_ip: alert.device_ip || '' })"
+        >
+          <span class="severity-dot" [class.critical]="alert.severity === 'critical'"></span>
+          <span>
+            <strong>{{ alert.type }}</strong>
+            <small>{{ alert.device_ip || 'système' }} · {{ alert.message }}</small>
+          </span>
+        </button>
+      </div>
+    </article>
+
+    <article class="panel wide">
+      <div class="panel-header compact">
+        <h2>Inventaire supervisé</h2>
+        <button type="button" class="link-btn" (click)="navigate('/carte-reseau')">Ouvrir carte réseau</button>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>IP</th>
+              <th>Hostname</th>
+              <th>Type</th>
+              <th>CPU</th>
+              <th>RAM</th>
+              <th>Latence</th>
+              <th>Statut</th>
+              <th>Dernière vue</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let device of devices">
+              <td><button type="button" class="ip-link" (click)="navigate('/carte-reseau', { ip: device.ip })">{{ device.ip }}</button></td>
+              <td>{{ device.hostname || '-' }}</td>
+              <td>{{ getDeviceTypeLabel(device.device_type) }}</td>
+              <td>{{ getMetricValue(device.cpu_percent, '%') }}</td>
+              <td>{{ getMetricValue(device.ram_percent, '%') }}</td>
+              <td>{{ getMetricValue(device.latency_ms, ' ms') }}</td>
+              <td><span class="device-state" [ngClass]="getStatusClass(device.status)">{{ getStatusLabel(device.status) }}</span></td>
+              <td>{{ device.last_seen | date:'dd/MM HH:mm' }}</td>
+              <td>
+                <button type="button" class="mini-btn" (click)="diagnoseDevice(device)" [disabled]="diagnosingDeviceId === device.id">
+                  {{ diagnosingDeviceId === device.id ? 'Diagnostic...' : 'Diagnostiquer machine' }}
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="diagnostic-result" *ngIf="diagnosticResult">
+        <strong>Diagnostic {{ diagnosticResult.ip }}</strong>
+        <span>Statut {{ diagnosticResult.status || '-' }}</span>
+        <span>CPU {{ diagnosticResult.cpu_percent ?? 'N/A' }}%</span>
+        <span>RAM {{ diagnosticResult.ram_percent ?? 'N/A' }}%</span>
+        <span>Latence {{ diagnosticResult.latency_ms ?? 'N/A' }} ms</span>
+        <small>Source {{ diagnosticResult.source }}</small>
+      </div>
+    </article>
+
+    <article class="panel">
+      <div class="panel-header compact">
+        <h2>Trafic réseau</h2>
+        <span class="status-pill">fonctionnel</span>
+      </div>
+
+      <div class="traffic-list">
+        <div class="traffic-row" *ngFor="let traffic of trafficHistory | slice:-5">
+          <span>{{ traffic.timestamp | date:'HH:mm' }}</span>
+          <strong>{{ traffic.total_packets }} paquets</strong>
+          <small>{{ traffic.bytes_total | number }} octets</small>
+        </div>
+      </div>
+
+      <div class="traffic-tops">
+        <div>
+          <h3>IP actives</h3>
+          <span *ngFor="let item of getTopTrafficItems('top_ips')">{{ item.ip }} · {{ item.count }}</span>
+        </div>
+        <div>
+          <h3>Ports actifs</h3>
+          <span *ngFor="let item of getTopTrafficItems('top_ports')">{{ item.port }} · {{ item.count }}</span>
+        </div>
+      </div>
+    </article>
+
   </section>
 </div>

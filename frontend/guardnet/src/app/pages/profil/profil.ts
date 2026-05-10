@@ -21,12 +21,33 @@ export class Profil {
   
   successMessage: string = '';
   errorMessage: string = '';
+  users: any[] = [];
 
   constructor(
     private http: HttpClient, 
     private authService: Auth,
     private cdr: ChangeDetectorRef
   ) {}
+
+  ngOnInit(): void {
+    this.loadUsers();
+  }
+
+  loadUsers(): void {
+    this.authService.getUsers().subscribe((users) => this.users = users || []);
+  }
+
+  supprimerUtilisateur(user: any): void {
+    if (user.email === this.email) {
+      this.errorMessage = 'Le compte administrateur courant ne peut pas etre supprime depuis cette interface.';
+      return;
+    }
+
+    this.authService.deleteUser(user.id).subscribe(() => {
+      this.users = this.users.filter((item) => item.id !== user.id);
+      this.successMessage = 'Compte utilisateur supprime.';
+    });
+  }
 
   changerMotDePasse(): void {
     this.successMessage = '';

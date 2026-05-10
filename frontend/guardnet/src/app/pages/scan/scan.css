@@ -1,0 +1,101 @@
+:host {
+  display: block;
+  min-height: 100vh;
+  background: #08111f;
+}
+
+:host ::ng-deep .min-h-screen {
+  background:
+    radial-gradient(circle at top right, rgba(14, 165, 233, 0.14), transparent 32%),
+    #08111f !important;
+}
+
+:host ::ng-deep .bg-white,
+:host ::ng-deep .bg-gray-50,
+:host ::ng-deep .bg-gray-100 {
+  background: rgba(15, 23, 42, 0.92) !important;
+}
+
+:host ::ng-deep .text-gray-950,
+:host ::ng-deep .text-gray-900,
+:host ::ng-deep .text-gray-800,
+:host ::ng-deep .text-gray-700 {
+  color: #e5eefb !important;
+}
+
+:host ::ng-deep .text-gray-500,
+:host ::ng-deep .text-gray-600,
+:host ::ng-deep .text-gray-400 {
+  color: #8aa0bb !important;
+}
+
+:host ::ng-deep .ring-gray-100,
+:host ::ng-deep .border-gray-100,
+:host ::ng-deep .border-gray-200 {
+  border-color: rgba(148, 163, 184, 0.18) !important;
+  --tw-ring-color: rgba(148, 163, 184, 0.18) !important;
+}
+
+:host ::ng-deep .bg-red-50 {
+  background: rgba(127, 29, 29, 0.28) !important;
+}
+
+:host ::ng-deep .bg-orange-50 {
+  background: rgba(124, 45, 18, 0.28) !important;
+}
+
+:host ::ng-deep .bg-blue-50,
+:host ::ng-deep .hover\:bg-blue-50:hover,
+:host ::ng-deep .hover\:bg-blue-50\/50:hover {
+  background: rgba(8, 47, 73, 0.46) !important;
+}
+
+:host ::ng-deep .bg-white\/70 {
+  background: rgba(2, 6, 23, 0.58) !important;
+}
+
+:host ::ng-deep .ring-white {
+  --tw-ring-color: rgba(226, 232, 240, 0.14) !important;
+}
+
+:host ::ng-deep .border-red-200 {
+  border-color: rgba(248, 113, 113, 0.38) !important;
+}
+
+:host ::ng-deep .border-orange-200 {
+  border-color: rgba(251, 146, 60, 0.38) !important;
+}
+
+:host ::ng-deep .border-blue-200 {
+  border-color: rgba(125, 211, 252, 0.34) !important;
+}
+
+:host ::ng-deep .bg-red-50.text-red-700 {
+  color: #fecaca !important;
+}
+
+:host ::ng-deep .bg-blue-50.text-blue-700,
+:host ::ng-deep .hover\:text-blue-700:hover {
+  color: #7dd3fc !important;
+}
+
+:host ::ng-deep input {
+  background: rgba(2, 6, 23, 0.45) !important;
+  border-color: rgba(125, 211, 252, 0.28) !important;
+  color: #e5eefb !important;
+}
+
+:host ::ng-deep table thead tr,
+:host ::ng-deep .divide-y > :not([hidden]) ~ :not([hidden]) {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+}
+
+.scan-ip-link {
+  border: 0;
+  padding: 0;
+  color: #67e8f9;
+  background: transparent;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}

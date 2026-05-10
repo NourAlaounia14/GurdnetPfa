@@ -1,0 +1,45 @@
+:host {
+  display: block;
+  min-height: 100vh;
+  background: #08111f;
+}
+
+:host ::ng-deep .bg-white {
+  background: rgba(15, 23, 42, 0.92) !important;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+}
+
+:host ::ng-deep .text-gray-800,
+:host ::ng-deep .text-gray-700,
+:host ::ng-deep .text-gray-600 {
+  color: #e5eefb !important;
+}
+
+:host ::ng-deep .text-gray-500 {
+  color: #9fb2cc !important;
+}
+
+:host ::ng-deep input {
+  color: #e5eefb;
+  background: rgba(2, 6, 23, 0.52);
+  border-color: rgba(125, 211, 252, 0.24);
+}
+
+.user-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 8px;
+  padding: 12px;
+  background: rgba(2, 6, 23, 0.35);
+}
+
+.user-row button {
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: #fecaca;
+  background: rgba(127, 29, 29, 0.24);
+}

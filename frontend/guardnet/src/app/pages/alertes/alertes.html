@@ -1,1 +1,149 @@
-<p>alertes works!</p>
+<div class="alerts-page">
+  <!-- En-tête -->
+  <div class="page-header">
+    <h1>Alertes</h1>
+    <div class="header-stats">
+      <div class="stat-card alert-badge">
+        <span class="stat-label">Actives</span>
+        <span class="stat-value">{{ getUnresolvedCount() }}</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Total</span>
+        <span class="stat-value">{{ stats.total }}</span>
+      </div>
+      <button type="button" class="btn-clear" (click)="exportCsv()">Exporter CSV</button>
+    </div>
+  </div>
+
+  <!-- Filtres -->
+  <div class="filters-section">
+    <div class="filter-group">
+      <label>Type d'alerte</label>
+      <select [(ngModel)]="filterType" (change)="onFilterChange()">
+        <option value="">Tous les types</option>
+        <option value="NEW_DEVICE">Nouvel appareil</option>
+        <option value="NEW_UNKNOWN_DEVICE">Appareil inconnu</option>
+        <option value="PORT_CHANGE">Changement de port</option>
+        <option value="DEVICE_DOWN">Appareil hors ligne</option>
+        <option value="LATENCY_HIGH">Latence élevée</option>
+        <option value="ANOMALY_DETECTED">Anomalie détectée</option>
+      </select>
+    </div>
+
+    <div class="filter-group">
+      <label>Sévérité</label>
+      <select [(ngModel)]="filterSeverity" (change)="onFilterChange()">
+        <option value="">Toutes les sévérités</option>
+        <option value="critical">Critique</option>
+        <option value="high">Élevée</option>
+        <option value="warning">Avertissement</option>
+        <option value="medium">Moyen</option>
+        <option value="low">Faible</option>
+      </select>
+    </div>
+
+    <div class="filter-group">
+      <label>Statut</label>
+      <select [(ngModel)]="filterResolved" (change)="onFilterChange()">
+        <option value="">Tous les statuts</option>
+        <option value="false">Non résolues</option>
+        <option value="true">Résolues</option>
+      </select>
+    </div>
+
+    <div class="filter-group">
+      <label>IP device</label>
+      <input [(ngModel)]="filterDeviceIp" (input)="onFilterChange()" placeholder="192.168.1.10" />
+    </div>
+
+    <button class="btn-clear" (click)="clearFilters()">Réinitialiser</button>
+  </div>
+
+  <!-- Message de chargement/erreur -->
+  <div *ngIf="loading" class="loading">
+    <p>Chargement des alertes...</p>
+  </div>
+
+  <div *ngIf="error" class="error">
+    {{ error }}
+  </div>
+
+  <!-- Tableau des alertes -->
+  <div *ngIf="!loading && filteredAlerts.length > 0" class="alerts-table-container">
+    <table class="alerts-table">
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Device IP</th>
+          <th>Sévérité</th>
+          <th>Message</th>
+          <th>Date</th>
+          <th>Statut</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let alert of getPaginatedAlerts()" [class.resolved]="alert.resolved">
+          <td class="type-cell">
+            <span class="type-icon">{{ getTypeIcon(alert.type) }}</span>
+            <button type="button" class="type-link" (click)="openType(alert)">{{ getTypeLabel(alert.type) }}</button>
+          </td>
+          <td>
+            <button type="button" class="ip-link" (click)="openDevice(alert)" [disabled]="!getDeviceIp(alert)">
+              {{ getDeviceIp(alert) || '-' }}
+            </button>
+          </td>
+          <td>
+            <span class="severity-badge" [class]="getSeverityClass(alert.severity)">
+              {{ alert.severity }}
+            </span>
+          </td>
+          <td class="message-cell">{{ alert.message }}</td>
+          <td class="date-cell">{{ formatDate(alert.created_at) }}</td>
+          <td>
+            <span [class]="'status-badge ' + (alert.resolved ? 'resolved' : 'unresolved')">
+              {{ alert.resolved ? 'Résolue' : 'Actif' }}
+            </span>
+          </td>
+          <td class="action-cell">
+            <button
+              *ngIf="!alert.resolved"
+              class="btn-resolve"
+              (click)="resolveAlert(alert)"
+              title="Résoudre l'alerte"
+            >
+              ✓
+            </button>
+            <span *ngIf="alert.resolved" class="text-muted">—</span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Pagination -->
+    <div class="pagination" *ngIf="getTotalPages() > 1">
+      <button
+        (click)="currentPage = currentPage - 1"
+        [disabled]="currentPage === 1"
+        class="btn-paginate"
+      >
+        ← Précédent
+      </button>
+      <span class="page-info">Page {{ currentPage }} / {{ getTotalPages() }}</span>
+      <button
+        (click)="currentPage = currentPage + 1"
+        [disabled]="currentPage === getTotalPages()"
+        class="btn-paginate"
+      >
+        Suivant →
+      </button>
+    </div>
+  </div>
+
+  <!-- Message vide -->
+  <div *ngIf="!loading && filteredAlerts.length === 0" class="empty-state">
+    <span class="empty-icon">📭</span>
+    <p>Aucune alerte trouvée</p>
+  </div>
+</div>
+

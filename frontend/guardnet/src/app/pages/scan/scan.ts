@@ -2,7 +2,8 @@ import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
+import { seedSummary } from '../../services/seed.data';
 
 interface ScanStartResponse {
   scan_id: number;
@@ -70,10 +71,11 @@ export class Scan implements OnInit, OnDestroy {
   private readonly scanApiUrl = 'http://127.0.0.1:8000/scan';
   private readonly alertsApiUrl = 'http://127.0.0.1:8000/alerts';
   private readonly monitoringApiUrl = 'http://127.0.0.1:8000/monitoring';
+  private readonly useSeedPreview = true;
   private pollTimer: number | undefined;
 
   ipRange = '';
-  scanType: 'rapide' | 'complet' = 'rapide';
+  scanType: 'complet' = 'complet';
   formSubmitted = false;
 
   isScanning = false;
@@ -95,9 +97,17 @@ export class Scan implements OnInit, OnDestroy {
   constructor(
     private http: HttpClient,
     private router: Router,
+    private route: ActivatedRoute,
   ) {}
 
   ngOnInit(): void {
+    this.route.queryParamMap.subscribe((params) => {
+      const ip = params.get('ip');
+      if (ip) {
+        this.ipRange = ip;
+        this.formSubmitted = false;
+      }
+    });
     this.loadPageData();
   }
 
@@ -126,10 +136,15 @@ export class Scan implements OnInit, OnDestroy {
     this.devices = [];
     this.activeScan = null;
 
+    if (this.useSeedPreview) {
+      this.showDemoScanPreview();
+      return;
+    }
+
     this.http
       .post<ScanStartResponse>(`${this.scanApiUrl}/start`, {
         ip_range: this.ipRange.trim(),
-        scan_type: this.scanType,
+        scan_type: 'complet',
       })
       .subscribe({
         next: (response) => {
@@ -146,6 +161,12 @@ export class Scan implements OnInit, OnDestroy {
 
   loadHistory(): void {
     this.isLoadingHistory = true;
+
+    if (this.useSeedPreview) {
+      this.showDemoScanPreview();
+      this.isLoadingHistory = false;
+      return;
+    }
 
     this.http.get<ScanHistoryItem[]>(`${this.scanApiUrl}/history`).subscribe({
       next: (history) => {
@@ -167,6 +188,16 @@ export class Scan implements OnInit, OnDestroy {
   loadMonitoringSummary(): void {
     this.isLoadingStats = true;
 
+    if (this.useSeedPreview) {
+      this.monitoringSummary = {
+        total: seedSummary.total,
+        online: seedSummary.online,
+        offline: seedSummary.offline,
+      };
+      this.isLoadingStats = false;
+      return;
+    }
+
     this.http.get<MonitoringSummary>(`${this.monitoringApiUrl}/summary`).subscribe({
       next: (summary) => {
         this.monitoringSummary = summary || { total: 0 };
@@ -187,6 +218,11 @@ export class Scan implements OnInit, OnDestroy {
     this.activeScanId = scanId;
     this.isLoadingResults = true;
 
+    if (this.useSeedPreview) {
+      this.showDemoScanPreview();
+      return;
+    }
+
     this.http.get<ScanDetailResponse>(`${this.scanApiUrl}/${scanId}`).subscribe({
       next: (response) => {
         this.activeScan = response.scan;
@@ -204,7 +240,7 @@ export class Scan implements OnInit, OnDestroy {
 
   prefillScan(item: ScanHistoryItem, scrollToForm = true): void {
     this.ipRange = item.ip_range;
-    this.scanType = item.scan_type === 'complet' ? 'complet' : 'rapide';
+    this.scanType = 'complet';
     this.formSubmitted = false;
 
     if (scrollToForm) {
@@ -266,6 +302,10 @@ export class Scan implements OnInit, OnDestroy {
 
   openAlertsPage(): void {
     this.router.navigate(['/alertes'], { queryParams: { resolved: 'false' } });
+  }
+
+  openNetworkMap(device: ScanDevice): void {
+    this.router.navigate(['/carte-reseau'], { queryParams: { ip: this.getDeviceIp(device) } });
   }
 
   openDeviceDetails(device: ScanDevice): void {
@@ -341,7 +381,7 @@ export class Scan implements OnInit, OnDestroy {
   }
 
   getScanTypeLabel(scanType?: string | null): string {
-    return scanType === 'complet' ? 'Complet' : 'Rapide';
+    return scanType === 'complet' ? 'Complet' : 'Automatique';
   }
 
   getScanTypeClass(scanType?: string | null): string {
@@ -432,6 +472,9 @@ export class Scan implements OnInit, OnDestroy {
     const startedAt = new Date(finishedAt.getTime() - 42 * 1000);
 
     this.isDemoData = true;
+    this.isScanning = false;
+    this.isLoadingResults = false;
+    this.errorMessage = '';
     this.activeScanId = -1;
     this.activeScan = {
       id: -1,
@@ -444,76 +487,67 @@ export class Scan implements OnInit, OnDestroy {
     this.devices = [
       {
         id: 1,
-        ip: '192.168.1.1',
-        hostname: 'GW-Principal',
-        os_name: 'RouterOS',
-        device_type: 'router',
+        ip: '192.168.1.2',
+        hostname: 'SW-LAN-01',
+        os_name: 'Switch manageable',
+        device_type: 'switch',
         is_new: false,
         ports: [
-          { port: 53, service: 'dns' },
           { port: 80, service: 'http' },
-          { port: 443, service: 'https' },
+          { port: 161, service: 'snmp' },
         ],
       },
       {
         id: 2,
         ip: '192.168.1.10',
-        hostname: 'SRV-AD-01',
-        os_name: 'Windows Server 2022',
-        device_type: 'server',
+        hostname: 'PC-TEST-01',
+        os_name: 'Windows 11 Pro',
+        device_type: 'workstation',
         is_new: false,
         ports: [
-          { port: 22, service: 'ssh' },
-          { port: 80, service: 'http' },
-          { port: 443, service: 'https' },
-          { port: 8080, service: 'http', is_new_port: true },
+          { port: 135, service: 'msrpc' },
+          { port: 445, service: 'smb' },
+          { port: 3389, service: 'rdp', is_new_port: true },
         ],
       },
       {
         id: 3,
-        ip: '192.168.1.25',
-        hostname: 'PC-Bureau-01',
-        os_name: 'Windows 10',
+        ip: '192.168.1.11',
+        hostname: 'PC-DEV-02',
+        os_name: 'Windows 11 Pro',
         device_type: 'workstation',
         is_new: false,
-        ports: [{ port: 3389, service: 'rdp' }],
-      },
-      {
-        id: 4,
-        ip: '192.168.1.35',
-        hostname: 'SW-Core',
-        os_name: 'Cisco IOS',
-        device_type: 'switch',
-        is_new: false,
         ports: [
-          { port: 22, service: 'ssh' },
-          { port: 161, service: 'snmp' },
+          { port: 135, service: 'msrpc' },
+          { port: 445, service: 'smb' },
         ],
       },
       {
+        id: 4,
+        ip: '192.168.1.12',
+        hostname: 'PC-ADMIN-03',
+        os_name: 'Ubuntu Desktop 24.04',
+        device_type: 'workstation',
+        is_new: false,
+        ports: [{ port: 22, service: 'ssh' }],
+      },
+      {
         id: 5,
-        ip: '192.168.1.45',
-        hostname: null,
-        os_name: null,
-        device_type: 'unknown',
-        is_new: true,
-        ports: [],
+        ip: '192.168.1.13',
+        hostname: 'PC-LAB-04',
+        os_name: 'Windows 10 Pro',
+        device_type: 'workstation',
+        is_new: false,
+        ports: [{ port: 445, service: 'smb' }],
       },
     ];
+    this.history = this.activeScan ? [this.activeScan] : [];
     this.scanAlerts = [
       {
         id: -1,
-        type: 'NEW_UNKNOWN_DEVICE',
-        severity: 'critical',
-        message: 'Nouveau device inconnu détecté : 192.168.1.45 (Inconnu)',
-        created_at: finishedAt.toISOString(),
-        resolved: false,
-      },
-      {
-        id: -2,
         type: 'PORT_CHANGE',
         severity: 'warning',
-        message: 'Nouveau port ouvert sur 192.168.1.10 : 8080/http',
+        message: 'Port RDP detecte sur PC-TEST-01 : 3389/tcp',
         created_at: finishedAt.toISOString(),
         resolved: false,
       },

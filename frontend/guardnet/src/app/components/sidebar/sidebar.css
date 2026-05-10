@@ -1,0 +1,82 @@
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  width: 260px;
+  height: 100vh;
+  padding: 18px;
+  color: #dbeafe;
+  background: linear-gradient(180deg, #050b16, #0b1324);
+  border-right: 1px solid rgba(148, 163, 184, 0.16);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 6px 24px;
+}
+
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  color: #ecfeff;
+  background: linear-gradient(135deg, #0891b2, #1d4ed8);
+  font-weight: 900;
+}
+
+.brand-mark svg {
+  width: 26px;
+  height: 26px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.brand strong,
+.brand small {
+  display: block;
+}
+
+.brand small {
+  margin-top: 2px;
+  color: #7dd3fc;
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.nav {
+  display: grid;
+  gap: 8px;
+}
+
+.nav a {
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 12px;
+  color: #9fb2cc;
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.nav a:hover,
+.nav a.active {
+  color: #eff6ff;
+  border-color: rgba(34, 211, 238, 0.34);
+  background: rgba(14, 165, 233, 0.12);
+}
+
+.logout {
+  margin-top: auto;
+  border: 1px solid rgba(248, 113, 113, 0.28);
+  border-radius: 8px;
+  padding: 12px;
+  color: #fecaca;
+  background: rgba(127, 29, 29, 0.22);
+  font-weight: 800;
+  cursor: pointer;
+}
